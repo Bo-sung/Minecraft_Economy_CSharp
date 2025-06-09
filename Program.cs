@@ -35,6 +35,7 @@ namespace HarvestCraft2.Economy.API
 
             app.Run();
         }
+
         private static void ConfigureServices(IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment)
         {
             // Controllers 설정
@@ -50,7 +51,7 @@ namespace HarvestCraft2.Economy.API
             services.AddDbContext<ApplicationDbContext>(options =>
             {
                 var connectionString = configuration.GetConnectionString("DefaultConnection");
-                options.UseMySQL(connectionString); // UseMySql → UseMySQL 변경
+                options.UseMySQL(connectionString);
 
                 // Development 환경에서만 상세 에러 활성화
                 if (environment.IsDevelopment())
@@ -74,11 +75,11 @@ namespace HarvestCraft2.Economy.API
             // Custom Services Registration
             services.AddScoped<IRedisService, RedisService>();
             services.AddScoped<IPriceService, PriceService>();
-            //services.AddScoped<IShopService, ShopService>();
-            //
-            //// Background Services
-            //services.AddHostedService<PriceUpdateBackgroundService>();
-            //services.AddHostedService<DataCleanupBackgroundService>();
+            services.AddScoped<IShopService, ShopService>(); // 주석 해제 및 등록
+
+            // Background Services
+            services.AddHostedService<PriceUpdateBackgroundService>(); // 주석 해제 및 등록
+            services.AddHostedService<DataCleanupBackgroundService>(); // 주석 해제 및 등록
 
             // API Documentation
             ConfigureSwagger(services);
@@ -92,7 +93,7 @@ namespace HarvestCraft2.Economy.API
             // Health Checks
             services.AddHealthChecks()
                 .AddDbContextCheck<ApplicationDbContext>("database")
-                .AddCheck<RedisHealthCheck>("redis");
+                .AddCheck<RedisHealthCheck>("redis"); // RedisHealthCheck 등록
 
             // Authentication & Authorization (API Key based)
             services.AddAuthentication("ApiKey")
