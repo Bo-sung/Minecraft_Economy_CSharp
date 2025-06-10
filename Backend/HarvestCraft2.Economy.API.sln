@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35931.197 d17.13
+VisualStudioVersion = 17.13.35931.197
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HarvestCraft2.Economy.API", "HarvestCraft2.Economy.API.csproj", "{7157BAF5-0ABB-4681-BA3E-24F67308F616}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HarvestCraft2.TestClient", "..\HarvestCraft2.TestClient\HarvestCraft2.TestClient.csproj", "{DF1E3B35-96BB-44DE-9C12-9C83F27BF828}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{7157BAF5-0ABB-4681-BA3E-24F67308F616}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7157BAF5-0ABB-4681-BA3E-24F67308F616}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7157BAF5-0ABB-4681-BA3E-24F67308F616}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF1E3B35-96BB-44DE-9C12-9C83F27BF828}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF1E3B35-96BB-44DE-9C12-9C83F27BF828}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF1E3B35-96BB-44DE-9C12-9C83F27BF828}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF1E3B35-96BB-44DE-9C12-9C83F27BF828}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

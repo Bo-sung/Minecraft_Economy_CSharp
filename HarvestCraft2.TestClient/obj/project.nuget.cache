@@ -1,0 +1,77 @@
+{
+  "version": 2,
+  "dgSpecHash": "SLWNnSfrk3I=",
+  "success": true,
+  "projectFilePath": "D:\\Gits\\MinecraftEconomy\\HarvestCraft2.Economy.API\\HarvestCraft2.TestClient\\HarvestCraft2.TestClient.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\user-pc\\.nuget\\packages\\communitytoolkit.mvvm\\8.4.0\\communitytoolkit.mvvm.8.4.0.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\livecharts\\0.9.7\\livecharts.0.9.7.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\livecharts.wpf\\0.9.7\\livecharts.wpf.0.9.7.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\materialdesigncolors\\5.2.1\\materialdesigncolors.5.2.1.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\materialdesignthemes\\5.2.1\\materialdesignthemes.5.2.1.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.configuration\\9.0.5\\microsoft.extensions.configuration.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\9.0.5\\microsoft.extensions.configuration.abstractions.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.configuration.binder\\9.0.5\\microsoft.extensions.configuration.binder.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.configuration.commandline\\9.0.5\\microsoft.extensions.configuration.commandline.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.configuration.environmentvariables\\9.0.5\\microsoft.extensions.configuration.environmentvariables.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.configuration.fileextensions\\9.0.5\\microsoft.extensions.configuration.fileextensions.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.configuration.json\\9.0.5\\microsoft.extensions.configuration.json.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.configuration.usersecrets\\9.0.5\\microsoft.extensions.configuration.usersecrets.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\9.0.5\\microsoft.extensions.dependencyinjection.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\9.0.5\\microsoft.extensions.dependencyinjection.abstractions.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.dependencymodel\\9.0.0\\microsoft.extensions.dependencymodel.9.0.0.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.diagnostics\\9.0.5\\microsoft.extensions.diagnostics.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.diagnostics.abstractions\\9.0.5\\microsoft.extensions.diagnostics.abstractions.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.fileproviders.abstractions\\9.0.5\\microsoft.extensions.fileproviders.abstractions.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.fileproviders.physical\\9.0.5\\microsoft.extensions.fileproviders.physical.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.filesystemglobbing\\9.0.5\\microsoft.extensions.filesystemglobbing.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.hosting\\9.0.5\\microsoft.extensions.hosting.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.hosting.abstractions\\9.0.5\\microsoft.extensions.hosting.abstractions.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.http\\9.0.5\\microsoft.extensions.http.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.logging\\9.0.5\\microsoft.extensions.logging.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\9.0.5\\microsoft.extensions.logging.abstractions.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.logging.configuration\\9.0.5\\microsoft.extensions.logging.configuration.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.logging.console\\9.0.5\\microsoft.extensions.logging.console.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.logging.debug\\9.0.5\\microsoft.extensions.logging.debug.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.logging.eventlog\\9.0.5\\microsoft.extensions.logging.eventlog.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.logging.eventsource\\9.0.5\\microsoft.extensions.logging.eventsource.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.options\\9.0.5\\microsoft.extensions.options.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.options.configurationextensions\\9.0.5\\microsoft.extensions.options.configurationextensions.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.extensions.primitives\\9.0.5\\microsoft.extensions.primitives.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\microsoft.xaml.behaviors.wpf\\1.1.39\\microsoft.xaml.behaviors.wpf.1.1.39.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\serilog\\4.2.0\\serilog.4.2.0.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\serilog.extensions.hosting\\9.0.0\\serilog.extensions.hosting.9.0.0.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\serilog.extensions.logging\\9.0.0\\serilog.extensions.logging.9.0.0.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\serilog.settings.configuration\\9.0.0\\serilog.settings.configuration.9.0.0.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\serilog.sinks.console\\6.0.0\\serilog.sinks.console.6.0.0.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\serilog.sinks.file\\7.0.0\\serilog.sinks.file.7.0.0.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\system.diagnostics.diagnosticsource\\9.0.5\\system.diagnostics.diagnosticsource.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\system.diagnostics.eventlog\\9.0.5\\system.diagnostics.eventlog.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\system.io.pipelines\\9.0.5\\system.io.pipelines.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\system.text.encodings.web\\9.0.5\\system.text.encodings.web.9.0.5.nupkg.sha512",
+    "C:\\Users\\user-pc\\.nuget\\packages\\system.text.json\\9.0.5\\system.text.json.9.0.5.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "프로젝트 대상 프레임워크 'net8.0-windows7.0' 대신 '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1'을(를) 사용하여 패키지 'LiveCharts 0.9.7'을(를) 복원했습니다. 이 패키지는 프로젝트와 완벽하게 호환되지 않을 수 있습니다.",
+      "libraryId": "LiveCharts",
+      "targetGraphs": [
+        "net8.0-windows7.0"
+      ]
+    },
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "프로젝트 대상 프레임워크 'net8.0-windows7.0' 대신 '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1'을(를) 사용하여 패키지 'LiveCharts.Wpf 0.9.7'을(를) 복원했습니다. 이 패키지는 프로젝트와 완벽하게 호환되지 않을 수 있습니다.",
+      "libraryId": "LiveCharts.Wpf",
+      "targetGraphs": [
+        "net8.0-windows7.0"
+      ]
+    }
+  ]
+}
