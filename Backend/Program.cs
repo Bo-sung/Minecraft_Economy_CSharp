@@ -194,7 +194,7 @@ namespace HarvestCraft2.Economy.API
                 app.UseSwaggerUI(options =>
                 {
                     options.SwaggerEndpoint("/swagger/v1/swagger.json", "HarvestCraft 2 Economy API v1");
-                    options.RoutePrefix = string.Empty; // Swagger UI를 루트에서 접근
+                    options.RoutePrefix = "swagger";
                 });
             }
             else
