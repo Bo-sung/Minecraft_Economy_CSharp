@@ -6,8 +6,39 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <materialDesign:BundledTheme BaseTheme="Light" PrimaryColor="DeepPurple" SecondaryColor="Lime" />
+                <!-- Material Design 기본 테마 -->
+                <materialDesign:BundledTheme BaseTheme="Light" 
+                                           PrimaryColor="DeepPurple" 
+                                           SecondaryColor="Lime" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
+
+                <!-- 커스텀 스타일 -->
+                <ResourceDictionary>
+                    <!-- HarvestCraft 브랜드 컬러 -->
+                    <SolidColorBrush x:Key="HarvestGreen" Color="#4CAF50"/>
+                    <SolidColorBrush x:Key="EconomyBlue" Color="#2196F3"/>
+                    <SolidColorBrush x:Key="PriceOrange" Color="#FF9800"/>
+                    <SolidColorBrush x:Key="DangerRed" Color="#F44336"/>
+
+                    <!-- 커스텀 폰트 스타일 -->
+                    <Style x:Key="HeaderTextStyle" TargetType="TextBlock">
+                        <Setter Property="FontSize" Value="24"/>
+                        <Setter Property="FontWeight" Value="Bold"/>
+                        <Setter Property="Foreground" Value="{StaticResource HarvestGreen}"/>
+                    </Style>
+
+                    <Style x:Key="PriceTextStyle" TargetType="TextBlock">
+                        <Setter Property="FontSize" Value="18"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                        <Setter Property="Foreground" Value="{StaticResource PriceOrange}"/>
+                    </Style>
+
+                    <!-- 탭 헤더 스타일 -->
+                    <Style x:Key="CustomTabItemStyle" TargetType="TabItem" BasedOn="{StaticResource MaterialDesignTabItem}">
+                        <Setter Property="FontSize" Value="14"/>
+                        <Setter Property="FontWeight" Value="Medium"/>
+                    </Style>
+                </ResourceDictionary>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
