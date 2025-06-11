@@ -18,4 +18,8 @@
     <Folder Include="Data\Migrations\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\HarvestCraft2.Shared\HarvestCraft2.Shared.csproj" />
+  </ItemGroup>
+
 </Project>
