@@ -1,256 +1,359 @@
 ﻿<Window x:Class="HarvestCraft2.TestClient.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        Title="HarvestCraft 2 Economy Test Client" 
+        Title="HarvestCraft 2 Economy - 테스트 클라이언트" 
         Height="800" Width="1200"
         MinHeight="600" MinWidth="900"
-        WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource MaterialDesignPaper}"
-        TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-        TextElement.FontWeight="Regular"
-        TextElement.FontSize="13"
-        TextOptions.TextFormattingMode="Ideal"
-        TextOptions.TextRenderingMode="Auto"
-        FontFamily="{DynamicResource MaterialDesignFont}">
-
-    <Window.Resources>
-        <!-- 로딩 애니메이션 스타일 -->
-        <Style x:Key="LoadingProgressBar" TargetType="ProgressBar" BasedOn="{StaticResource MaterialDesignCircularProgressBar}">
-            <Setter Property="Width" Value="32"/>
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="IsIndeterminate" Value="True"/>
-            <Setter Property="Foreground" Value="{StaticResource HarvestGreen}"/>
-        </Style>
-    </Window.Resources>
+        Style="{StaticResource MainWindowStyle}"
+        WindowStartupLocation="CenterScreen">
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- 상단 헤더 -->
+            <!-- 상단 툴바 -->
             <RowDefinition Height="*"/>
             <!-- 메인 컨텐츠 -->
             <RowDefinition Height="Auto"/>
             <!-- 하단 상태바 -->
         </Grid.RowDefinitions>
 
-        <!-- 상단 헤더 영역 -->
-        <materialDesign:Card Grid.Row="0" Margin="0,0,0,8">
-            <Grid Background="{StaticResource HarvestGreen}" Height="80">
+        <!-- 상단 툴바 -->
+        <Border Grid.Row="0" Background="#FF2196F3" Padding="16,8">
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- 로고 및 제목 -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" 
-                          VerticalAlignment="Center" Margin="16,0">
-                    <materialDesign:PackIcon Kind="Sprout" 
-                                           Width="32" Height="32" 
-                                           Foreground="White"
-                                           VerticalAlignment="Center"/>
-                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="HarvestCraft 2 Economy" 
-                                 FontSize="20" FontWeight="Bold" 
-                                 Foreground="White"/>
-                        <TextBlock Text="Test Client v1.0" 
-                                 FontSize="12" 
-                                 Foreground="#E0FFFFFF"/>
-                    </StackPanel>
+                <!-- 제목 영역 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="🌾" FontSize="24" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="HarvestCraft 2 Economy" 
+                             FontSize="18" FontWeight="Bold" 
+                             Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="테스트 클라이언트" 
+                             FontSize="14" Foreground="#CCE3F3FF" 
+                             Margin="8,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- API 연결 상태 -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" 
-                          VerticalAlignment="Center" Margin="16,0">
-                    <materialDesign:PackIcon x:Name="ConnectionIcon"
-                                           Kind="WifiStrength4" 
-                                           Width="20" Height="20" 
-                                           Foreground="White"
-                                           VerticalAlignment="Center"/>
-                    <TextBlock x:Name="ConnectionStatus" 
-                             Text="API 연결됨" 
-                             FontSize="12" 
-                             Foreground="White"
-                             Margin="8,0,0,0"
-                             VerticalAlignment="Center"/>
-                </StackPanel>
+                <!-- 연결 상태 및 버튼 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border x:Name="ConnectionStatus" Style="{StaticResource StatusBorder}" 
+                          Background="#FF4CAF50" Margin="0,0,16,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="White" Margin="0,0,4,0"/>
+                            <TextBlock Text="연결됨" Foreground="White" FontSize="12"/>
+                        </StackPanel>
+                    </Border>
 
-                <!-- 새로고침 버튼 -->
-                <Button Grid.Column="3" 
-                      x:Name="RefreshButton"
-                      Style="{StaticResource MaterialDesignIconForegroundButton}"
-                      Foreground="White"
-                      Margin="0,0,16,0"
-                      ToolTip="데이터 새로고침">
-                    <materialDesign:PackIcon Kind="Refresh" Width="20" Height="20"/>
-                </Button>
+                    <Button x:Name="ConnectButton" Content="연결 테스트" 
+                          Style="{StaticResource SecondaryButton}" 
+                          Background="White" Foreground="#FF2196F3"
+                          Click="ConnectButton_Click"/>
+                </StackPanel>
             </Grid>
-        </materialDesign:Card>
+        </Border>
 
         <!-- 메인 탭 컨트롤 -->
-        <TabControl Grid.Row="1" 
-                  Style="{StaticResource MaterialDesignTabControl}"
-                  materialDesign:ColorZoneAssist.Mode="PrimaryMid"
-                  Margin="8,0,8,8">
+        <TabControl Grid.Row="1" Style="{StaticResource MainTabControl}" 
+                  x:Name="MainTabControl" TabStripPlacement="Top">
 
-            <!-- 상점 거래 탭 (임시 컨텐츠) -->
-            <TabItem Header="상점 거래" 
-                   Style="{StaticResource CustomTabItemStyle}">
-                <TabItem.HeaderTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Store" 
-                                                   Width="18" Height="18"
-                                                   VerticalAlignment="Center"/>
-                            <TextBlock Text="상점 거래" 
-                                     Margin="8,0,0,0"
-                                     VerticalAlignment="Center"/>
+            <!-- 대시보드 탭 -->
+            <TabItem Header="📊 대시보드" x:Name="DashboardTab">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 요약 카드들 -->
+                        <UniformGrid Grid.Row="0" Rows="1" Columns="4" Margin="0,0,0,16">
+                            <Border Style="{StaticResource SectionCard}">
+                                <StackPanel>
+                                    <TextBlock Text="온라인 플레이어" FontWeight="Bold" FontSize="14"/>
+                                    <TextBlock x:Name="OnlinePlayersCount" Text="0" FontSize="32" 
+                                             Foreground="#FF2196F3" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource SectionCard}">
+                                <StackPanel>
+                                    <TextBlock Text="활성 아이템" FontWeight="Bold" FontSize="14"/>
+                                    <TextBlock x:Name="ActiveItemsCount" Text="0" FontSize="32" 
+                                             Foreground="#FF4CAF50" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource SectionCard}">
+                                <StackPanel>
+                                    <TextBlock Text="총 거래량" FontWeight="Bold" FontSize="14"/>
+                                    <TextBlock x:Name="TotalTradeVolume" Text="0" FontSize="32" 
+                                             Foreground="#FFFF9800" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource SectionCard}">
+                                <StackPanel>
+                                    <TextBlock Text="시스템 상태" FontWeight="Bold" FontSize="14"/>
+                                    <TextBlock x:Name="SystemStatus" Text="정상" FontSize="24" 
+                                             Foreground="#FF4CAF50" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <!-- 차트 영역 -->
+                        <Border Grid.Row="1" Style="{StaticResource ChartContainer}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- 가격 차트 영역 -->
+                                <Border Grid.Column="0" Background="#FFF5F5F5" 
+                                      BorderBrush="LightGray" BorderThickness="1" Margin="0,0,8,0">
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="📈" FontSize="48" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="실시간 가격 차트" FontSize="16" FontWeight="Bold" 
+                                                 HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                                        <TextBlock Text="Phase 2에서 구현 예정" FontSize="12" 
+                                                 Foreground="Gray" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- 최근 활동 -->
+                                <Border Grid.Column="1" Style="{StaticResource SectionCard}" Margin="8,0,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="최근 활동" FontWeight="Bold" FontSize="14" Margin="0,0,0,8"/>
+                                        <ListBox x:Name="RecentActivityList" Height="200" BorderThickness="0">
+                                            <ListBoxItem Content="시스템 시작됨" />
+                                            <ListBoxItem Content="API 연결 대기 중..." />
+                                            <ListBoxItem Content="데이터 로딩 준비" />
+                                        </ListBox>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- 상점 테스트 탭 -->
+            <TabItem Header="🛒 상점 테스트" x:Name="ShopTab">
+                <Grid Margin="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 거래 테스트 -->
+                    <Border Grid.Column="0" Style="{StaticResource SectionCard}" Margin="0,0,8,0">
+                        <StackPanel>
+                            <TextBlock Text="거래 테스트" FontWeight="Bold" FontSize="16" Margin="0,0,0,16"/>
+
+                            <TextBlock Text="플레이어 ID:" Margin="0,0,0,4"/>
+                            <TextBox x:Name="PlayerIdTextBox" Style="{StaticResource MainTextBox}" 
+                                   Text="test-player-001"/>
+
+                            <TextBlock Text="아이템 ID:" Margin="0,8,0,4"/>
+                            <ComboBox x:Name="ItemIdComboBox" Style="{StaticResource MainComboBox}">
+                                <ComboBoxItem Content="minecraft:apple" />
+                                <ComboBoxItem Content="minecraft:bread" />
+                                <ComboBoxItem Content="minecraft:carrot" />
+                            </ComboBox>
+
+                            <TextBlock Text="수량:" Margin="0,8,0,4"/>
+                            <TextBox x:Name="QuantityTextBox" Style="{StaticResource MainTextBox}" Text="1"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                <Button Content="구매" Style="{StaticResource PrimaryButton}" 
+                                      Click="BuyButton_Click" Margin="0,0,8,0"/>
+                                <Button Content="판매" Style="{StaticResource SecondaryButton}" 
+                                      Click="SellButton_Click"/>
+                            </StackPanel>
                         </StackPanel>
-                    </DataTemplate>
-                </TabItem.HeaderTemplate>
-                <Grid>
-                    <materialDesign:Card Margin="16">
-                        <StackPanel Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="Store" Width="64" Height="64" 
-                                                   Foreground="{StaticResource HarvestGreen}"
-                                                   HorizontalAlignment="Center"/>
-                            <TextBlock Text="상점 거래 기능" FontSize="24" FontWeight="Bold"
-                                     HorizontalAlignment="Center" Margin="0,16,0,8"/>
-                            <TextBlock Text="아이템 구매/판매 인터페이스가 여기에 표시됩니다."
-                                     HorizontalAlignment="Center" Opacity="0.7"/>
-                            <TextBlock Text="곧 개발될 예정입니다!"
-                                     HorizontalAlignment="Center" Margin="0,8,0,0"
-                                     Foreground="{StaticResource EconomyBlue}"/>
+                    </Border>
+
+                    <!-- 거래 결과 -->
+                    <Border Grid.Column="1" Style="{StaticResource SectionCard}" Margin="8,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="거래 결과" FontWeight="Bold" FontSize="16" Margin="0,0,0,16"/>
+                            <TextBox x:Name="TradeResultTextBox" Height="200" TextWrapping="Wrap" 
+                                   AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
+                                   Text="거래 테스트 결과가 여기에 표시됩니다."/>
+
+                            <Button Content="결과 지우기" Style="{StaticResource SecondaryButton}" 
+                                  Margin="0,8,0,0" Click="ClearResultButton_Click"/>
                         </StackPanel>
-                    </materialDesign:Card>
+                    </Border>
                 </Grid>
             </TabItem>
 
-            <!-- 가격 모니터링 탭 (임시 컨텐츠) -->
-            <TabItem Header="가격 모니터링" 
-                   Style="{StaticResource CustomTabItemStyle}">
-                <TabItem.HeaderTemplate>
-                    <DataTemplate>
+            <!-- 가격 모니터링 탭 -->
+            <TabItem Header="💰 가격 모니터링" x:Name="PriceTab">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 필터 영역 -->
+                    <Border Grid.Row="0" Style="{StaticResource SectionCard}" Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="ChartLine" 
-                                                   Width="18" Height="18"
-                                                   VerticalAlignment="Center"/>
-                            <TextBlock Text="가격 모니터링" 
-                                     Margin="8,0,0,0"
-                                     VerticalAlignment="Center"/>
+                            <TextBlock Text="아이템 필터:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="PriceFilterComboBox" Style="{StaticResource MainComboBox}" 
+                                    Width="200" Margin="0,0,16,0">
+                                <ComboBoxItem Content="전체" IsSelected="True"/>
+                                <ComboBoxItem Content="식품"/>
+                                <ComboBoxItem Content="재료"/>
+                            </ComboBox>
+
+                            <Button Content="새로고침" Style="{StaticResource PrimaryButton}" 
+                                  Click="RefreshPricesButton_Click"/>
                         </StackPanel>
-                    </DataTemplate>
-                </TabItem.HeaderTemplate>
-                <Grid>
-                    <materialDesign:Card Margin="16">
-                        <StackPanel Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="ChartLine" Width="64" Height="64" 
-                                                   Foreground="{StaticResource EconomyBlue}"
-                                                   HorizontalAlignment="Center"/>
-                            <TextBlock Text="가격 모니터링" FontSize="24" FontWeight="Bold"
-                                     HorizontalAlignment="Center" Margin="0,16,0,8"/>
-                            <TextBlock Text="실시간 가격 차트와 트렌드 분석이 여기에 표시됩니다."
-                                     HorizontalAlignment="Center" Opacity="0.7"/>
-                            <TextBlock Text="LiveCharts 통합 예정!"
-                                     HorizontalAlignment="Center" Margin="0,8,0,0"
-                                     Foreground="{StaticResource PriceOrange}"/>
-                        </StackPanel>
-                    </materialDesign:Card>
+                    </Border>
+
+                    <!-- 가격 목록 -->
+                    <Border Grid.Row="1" Style="{StaticResource SectionCard}">
+                        <DataGrid x:Name="PricesDataGrid" Style="{StaticResource MainDataGrid}">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="아이템 ID" Binding="{Binding ItemId}" Width="200"/>
+                                <DataGridTextColumn Header="현재 가격" Binding="{Binding CurrentPrice}" Width="100"/>
+                                <DataGridTextColumn Header="기본 가격" Binding="{Binding BasePrice}" Width="100"/>
+                                <DataGridTextColumn Header="변동률" Binding="{Binding ChangeRate}" Width="80"/>
+                                <DataGridTextColumn Header="마지막 업데이트" Binding="{Binding LastUpdated}" Width="150"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
                 </Grid>
             </TabItem>
 
-            <!-- 시장 분석 탭 (임시 컨텐츠) -->
-            <TabItem Header="시장 분석" 
-                   Style="{StaticResource CustomTabItemStyle}">
-                <TabItem.HeaderTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Finance" 
-                                                   Width="18" Height="18"
-                                                   VerticalAlignment="Center"/>
-                            <TextBlock Text="시장 분석" 
-                                     Margin="8,0,0,0"
-                                     VerticalAlignment="Center"/>
+            <!-- 플레이어 관리 탭 -->
+            <TabItem Header="👤 플레이어 관리" x:Name="PlayerTab">
+                <Grid Margin="16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="300"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 플레이어 목록 -->
+                    <Border Grid.Column="0" Style="{StaticResource SectionCard}" Margin="0,0,8,0">
+                        <StackPanel>
+                            <TextBlock Text="가상 플레이어 목록" FontWeight="Bold" FontSize="16" Margin="0,0,0,16"/>
+
+                            <ListBox x:Name="PlayersListBox" Height="300" SelectionChanged="PlayersListBox_SelectionChanged">
+                                <ListBoxItem Content="test-player-001" IsSelected="True"/>
+                                <ListBoxItem Content="test-player-002"/>
+                                <ListBoxItem Content="test-player-003"/>
+                            </ListBox>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Content="추가" Style="{StaticResource PrimaryButton}" 
+                                      Click="AddPlayerButton_Click" Margin="0,0,4,0"/>
+                                <Button Content="삭제" Style="{StaticResource SecondaryButton}" 
+                                      Click="RemovePlayerButton_Click"/>
+                            </StackPanel>
                         </StackPanel>
-                    </DataTemplate>
-                </TabItem.HeaderTemplate>
-                <Grid>
-                    <materialDesign:Card Margin="16">
-                        <StackPanel Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="Finance" Width="64" Height="64" 
-                                                   Foreground="{StaticResource PriceOrange}"
-                                                   HorizontalAlignment="Center"/>
-                            <TextBlock Text="시장 분석" FontSize="24" FontWeight="Bold"
-                                     HorizontalAlignment="Center" Margin="0,16,0,8"/>
-                            <TextBlock Text="시장 통계, 트렌드 분석, 수요/공급 데이터가 표시됩니다."
-                                     HorizontalAlignment="Center" Opacity="0.7"/>
+                    </Border>
+
+                    <!-- 플레이어 상세 정보 -->
+                    <Border Grid.Column="1" Style="{StaticResource SectionCard}" Margin="8,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="플레이어 상세 정보" FontWeight="Bold" FontSize="16" Margin="0,0,0,16"/>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="플레이어 ID:" Margin="0,0,8,8"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="SelectedPlayerIdText" 
+                                         Text="test-player-001" Margin="0,0,0,8"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="잔액:" Margin="0,0,8,8"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="SelectedPlayerBalanceText" 
+                                         Text="10,000 Gold" Margin="0,0,0,8"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="거래 내역:" Margin="0,0,8,8"/>
+
+                                <DataGrid Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" 
+                                        x:Name="PlayerTransactionsDataGrid" Style="{StaticResource MainDataGrid}"
+                                        Margin="0,8,0,0">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="시간" Binding="{Binding Time}" Width="120"/>
+                                        <DataGridTextColumn Header="타입" Binding="{Binding Type}" Width="60"/>
+                                        <DataGridTextColumn Header="아이템" Binding="{Binding Item}" Width="150"/>
+                                        <DataGridTextColumn Header="수량" Binding="{Binding Quantity}" Width="60"/>
+                                        <DataGridTextColumn Header="금액" Binding="{Binding Amount}" Width="80"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
                         </StackPanel>
-                    </materialDesign:Card>
+                    </Border>
                 </Grid>
             </TabItem>
 
-            <!-- 개발 진행 상황 탭 -->
-            <TabItem Header="개발 상황" 
-                   Style="{StaticResource CustomTabItemStyle}">
-                <TabItem.HeaderTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="CodeBrackets" 
-                                                   Width="18" Height="18"
-                                                   VerticalAlignment="Center"/>
-                            <TextBlock Text="개발 상황" 
-                                     Margin="8,0,0,0"
-                                     VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </TabItem.HeaderTemplate>
-                <ScrollViewer>
-                    <materialDesign:Card Margin="16">
-                        <StackPanel Margin="24">
-                            <TextBlock Text="WPF 테스트 클라이언트 개발 진행 상황" 
-                                     FontSize="20" FontWeight="Bold"
-                                     Foreground="{StaticResource HarvestGreen}"/>
+            <!-- 설정 탭 -->
+            <TabItem Header="⚙️ 설정" x:Name="SettingsTab">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="16">
+                        <!-- API 설정 -->
+                        <Border Style="{StaticResource SectionCard}">
+                            <StackPanel>
+                                <TextBlock Text="API 연결 설정" FontWeight="Bold" FontSize="16" Margin="0,0,0,16"/>
 
-                            <Separator Margin="0,16"/>
+                                <TextBlock Text="서버 URL:" Margin="0,0,0,4"/>
+                                <TextBox x:Name="ApiUrlTextBox" Style="{StaticResource MainTextBox}" 
+                                       Text="http://localhost:5000"/>
 
-                            <TextBlock Text="✅ 완료된 작업:" FontWeight="Bold" Margin="0,8"/>
-                            <TextBlock Text="• 프로젝트 생성 및 기초 설정" Margin="16,4"/>
-                            <TextBlock Text="• App.xaml - Material Design 테마 설정" Margin="16,4"/>
-                            <TextBlock Text="• App.xaml.cs - 의존성 주입 및 서비스 등록" Margin="16,4"/>
-                            <TextBlock Text="• MainWindow.xaml - 메인 UI 레이아웃" Margin="16,4"/>
+                                <TextBlock Text="API 키:" Margin="0,8,0,4"/>
+                                <TextBox x:Name="ApiKeyTextBox" Style="{StaticResource MainTextBox}" 
+                                       Text="your-api-key-here"/>
 
-                            <TextBlock Text="🔄 진행 중:" FontWeight="Bold" Margin="0,16,0,8"/>
-                            <TextBlock Text="• MainWindow.xaml.cs - 메인 창 코드 비하인드" Margin="16,4"/>
+                                <TextBlock Text="타임아웃 (초):" Margin="0,8,0,4"/>
+                                <TextBox x:Name="TimeoutTextBox" Style="{StaticResource MainTextBox}" Text="30"/>
 
-                            <TextBlock Text="📋 다음 예정:" FontWeight="Bold" Margin="0,16,0,8"/>
-                            <TextBlock Text="• appsettings.json - 설정 파일" Margin="16,4"/>
-                            <TextBlock Text="• MVVM 기본 구조 - 베이스 클래스들" Margin="16,4"/>
-                            <TextBlock Text="• API 서비스 구현" Margin="16,4"/>
-                            <TextBlock Text="• Views 및 ViewModels 개발" Margin="16,4"/>
+                                <Button Content="설정 저장" Style="{StaticResource PrimaryButton}" 
+                                      Margin="0,16,0,0" Click="SaveSettingsButton_Click"/>
+                            </StackPanel>
+                        </Border>
 
-                            <Separator Margin="0,16"/>
+                        <!-- UI 설정 -->
+                        <Border Style="{StaticResource SectionCard}">
+                            <StackPanel>
+                                <TextBlock Text="UI 설정" FontWeight="Bold" FontSize="16" Margin="0,0,0,16"/>
 
-                            <TextBlock Text="Phase 1 진행률: 4/6 (약 67%)" 
-                                     FontSize="16" FontWeight="Bold"
-                                     Foreground="{StaticResource EconomyBlue}"/>
-                        </StackPanel>
-                    </materialDesign:Card>
+                                <CheckBox x:Name="AutoRefreshCheckBox" Content="자동 새로고침 (30초)" 
+                                        IsChecked="True" Margin="0,0,0,8"/>
+
+                                <CheckBox x:Name="ShowNotificationsCheckBox" Content="알림 표시" 
+                                        IsChecked="True" Margin="0,0,0,8"/>
+
+                                <CheckBox x:Name="ShowAdvancedFeaturesCheckBox" Content="고급 기능 표시" 
+                                        IsChecked="False"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </ScrollViewer>
             </TabItem>
         </TabControl>
 
         <!-- 하단 상태바 -->
-        <materialDesign:Card Grid.Row="2" Margin="0,8,0,0">
-            <StatusBar Background="{DynamicResource MaterialDesignBackground}" 
-                     Height="32">
+        <Border Grid.Row="2" Background="#FFF0F0F0" BorderBrush="LightGray" BorderThickness="0,1,0,0">
+            <StatusBar Height="24" Background="Transparent">
                 <StatusBar.ItemsPanel>
                     <ItemsPanelTemplate>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
@@ -260,42 +363,19 @@
 
                 <!-- 상태 메시지 -->
                 <StatusBarItem Grid.Column="0">
-                    <TextBlock x:Name="StatusMessage" 
-                             Text="개발 진행 중 - Phase 1: 기본 구조 구축" 
-                             FontSize="11"/>
+                    <TextBlock x:Name="StatusMessage" Text="준비" FontSize="11"/>
                 </StatusBarItem>
 
-                <!-- 마지막 업데이트 시간 -->
+                <!-- 진행률 -->
                 <StatusBarItem Grid.Column="1">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ClockOutline" 
-                                               Width="14" Height="14" 
-                                               VerticalAlignment="Center"/>
-                        <TextBlock x:Name="LastUpdateTime" 
-                                 Text="--:--:--" 
-                                 FontSize="11"
-                                 Margin="4,0,0,0"/>
-                    </StackPanel>
+                    <TextBlock x:Name="ProgressText" Text="Phase 1: 기본 구조 (67%)" FontSize="11" Margin="8,0"/>
                 </StatusBarItem>
 
-                <!-- 개발 진행률 -->
+                <!-- 시간 -->
                 <StatusBarItem Grid.Column="2">
-                    <StackPanel Orientation="Horizontal" Margin="16,0,0,0">
-                        <TextBlock x:Name="DevelopmentProgress" 
-                                 Text="67% 완료" 
-                                 FontSize="11"
-                                 Margin="4,0,0,0"/>
-                    </StackPanel>
-                </StatusBarItem>
-
-                <!-- 로딩 인디케이터 -->
-                <StatusBarItem Grid.Column="3">
-                    <ProgressBar x:Name="LoadingIndicator"
-                               Style="{StaticResource LoadingProgressBar}"
-                               Visibility="Collapsed"
-                               Margin="16,0,8,0"/>
+                    <TextBlock x:Name="CurrentTimeText" Text="--:--:--" FontSize="11"/>
                 </StatusBarItem>
             </StatusBar>
-        </materialDesign:Card>
+        </Border>
     </Grid>
 </Window>
