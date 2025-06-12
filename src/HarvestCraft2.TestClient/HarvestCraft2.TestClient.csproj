@@ -31,8 +31,6 @@
     <Folder Include="Helpers\" />
     <Folder Include="Dialogs\" />
     <Folder Include="Styles\" />
-    <Folder Include="Services\" />
-    <Folder Include="ViewModels\" />
     <Folder Include="Views\" />
   </ItemGroup>
 
