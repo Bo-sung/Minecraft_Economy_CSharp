@@ -6,8 +6,8 @@ using Serilog;
 using System;
 using System.IO;
 using System.Windows;
-//using HarvestCraft2.TestClient.Services;
-//using HarvestCraft2.TestClient.ViewModels;
+using HarvestCraft2.TestClient.Services;
+using HarvestCraft2.TestClient.ViewModels;
 using Serilog.Events;
 
 namespace HarvestCraft2.TestClient
@@ -109,8 +109,7 @@ namespace HarvestCraft2.TestClient
                     services.Configure<ApiSettings>(configuration.GetSection("ApiSettings"));
                     services.Configure<UiSettings>(configuration.GetSection("UiSettings"));
 
-                    // HTTP 클라이언트 (임시로 주석처리 - 서비스 미구현)
-                    /*
+                    // HTTP 클라이언트
                     services.AddHttpClient<IApiService, ApiService>(client =>
                     {
                         var apiSettings = configuration.GetSection("ApiSettings").Get<ApiSettings>();
@@ -123,13 +122,12 @@ namespace HarvestCraft2.TestClient
                             client.DefaultRequestHeaders.Add("X-API-Key", apiSettings.ApiKey);
                         }
                     });
-                    */
 
                     // 서비스 등록 (미구현 서비스들은 주석처리)
-                    // RegisterServices(services);
+                    RegisterServices(services);
 
                     // 뷰모델 등록 (미구현 뷰모델들은 주석처리)
-                    // RegisterViewModels(services);
+                    RegisterViewModels(services);
 
                     // 윈도우 등록
                     RegisterWindows(services);
@@ -141,19 +139,16 @@ namespace HarvestCraft2.TestClient
         /// </summary>
         private static void RegisterServices(IServiceCollection services)
         {
-            // TODO: Phase 2에서 구현 예정
-            /*
             // 핵심 서비스
             services.AddSingleton<IApiService, ApiService>();
             services.AddSingleton<IPlayerService, PlayerService>();
             services.AddSingleton<IChartService, ChartService>();
-            services.AddSingleton<ISettingsService, SettingsService>();
-            services.AddSingleton<INotificationService, NotificationService>();
+            //services.AddSingleton<ISettingsService, SettingsService>();
+            //services.AddSingleton<INotificationService, NotificationService>();
 
             // 유틸리티 서비스
-            services.AddSingleton<IDialogService, DialogService>();
-            services.AddTransient<IExportService, ExportService>();
-            */
+            //services.AddSingleton<IDialogService, DialogService>();
+            //services.AddTransient<IExportService, ExportService>();
         }
 
         /// <summary>
