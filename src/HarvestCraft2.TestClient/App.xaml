@@ -1,229 +1,170 @@
 ﻿<Application x:Class="HarvestCraft2.TestClient.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             StartupUri="MainWindow.xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
-        <ResourceDictionary>
-            <!-- 기본 WPF 스타일만 사용 (Material Design 제거) -->
-            <ResourceDictionary.MergedDictionaries>
-                <!-- 테마 색상 시스템 -->
-                <ResourceDictionary>
-                    <!-- === 기본 색상 팔레트 === -->
-                    <!-- 주요 색상 -->
-                    <Color x:Key="PrimaryColor">#FF2196F3</Color>
-                    <Color x:Key="PrimaryLightColor">#FF64B5F6</Color>
-                    <Color x:Key="PrimaryDarkColor">#FF1976D2</Color>
+        <!-- 기본 색상 -->
+        <SolidColorBrush x:Key="PrimaryColor" Color="#2196F3"/>
+        <SolidColorBrush x:Key="SecondaryColor" Color="#FFC107"/>
+        <SolidColorBrush x:Key="AccentColor" Color="#4CAF50"/>
+        <SolidColorBrush x:Key="DangerColor" Color="#F44336"/>
 
-                    <!-- 보조 색상 -->
-                    <Color x:Key="SecondaryColor">#FF4CAF50</Color>
-                    <Color x:Key="AccentColor">#FFFF9800</Color>
+        <!-- 메인 윈도우 스타일 -->
+        <Style x:Key="MainWindowStyle" TargetType="Window">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Background" Value="#FFF8F9FA"/>
+        </Style>
 
-                    <!-- 상태 색상 -->
-                    <Color x:Key="SuccessColor">#FF4CAF50</Color>
-                    <Color x:Key="WarningColor">#FFFFC107</Color>
-                    <Color x:Key="ErrorColor">#FFF44336</Color>
-                    <Color x:Key="InfoColor">#FF2196F3</Color>
+        <!-- 버튼 스타일들 (명시적 Key 지정) -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1976D2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#1565C0"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#CCCCCC"/>
+                                <Setter Property="Foreground" Value="#666666"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                    <!-- 배경 색상 -->
-                    <Color x:Key="BackgroundColor">#FFFFFFFF</Color>
-                    <Color x:Key="SurfaceColor">#FFFAFAFA</Color>
-                    <Color x:Key="CardBackgroundColor">#FFFFFFFF</Color>
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#F5F5F5"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#EEEEEE"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Background" Value="#F5F5F5"/>
+                                <Setter Property="Foreground" Value="#CCCCCC"/>
+                                <Setter Property="BorderBrush" Value="#CCCCCC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                    <!-- 텍스트 색상 -->
-                    <Color x:Key="TextPrimaryColor">#FF212121</Color>
-                    <Color x:Key="TextSecondaryColor">#FF757575</Color>
-                    <Color x:Key="TextOnPrimaryColor">#FFFFFFFF</Color>
+        <!-- 텍스트박스 스타일 -->
+        <Style x:Key="MainTextBox" TargetType="TextBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ScrollViewer x:Name="PART_ContentHost" Padding="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource PrimaryColor}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                    <!-- 경계선 색상 -->
-                    <Color x:Key="BorderColor">#FFE0E0E0</Color>
-                    <Color x:Key="DividerColor">#FFBDBDBD</Color>
+        <!-- 콤보박스 스타일 -->
+        <Style x:Key="MainComboBox" TargetType="ComboBox">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+        </Style>
 
-                    <!-- === SolidColorBrush 리소스 === -->
-                    <!-- 주요 브러시 -->
-                    <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
-                    <SolidColorBrush x:Key="PrimaryLightBrush" Color="{StaticResource PrimaryLightColor}"/>
-                    <SolidColorBrush x:Key="PrimaryDarkBrush" Color="{StaticResource PrimaryDarkColor}"/>
+        <!-- 데이터그리드 스타일 -->
+        <Style x:Key="MainDataGrid" TargetType="DataGrid">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#EEEEEE"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="CanUserDeleteRows" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
+        </Style>
 
-                    <!-- 보조 브러시 -->
-                    <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource SecondaryColor}"/>
-                    <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+        <!-- 탭 컨트롤 스타일 -->
+        <Style x:Key="MainTabControl" TargetType="TabControl">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
 
-                    <!-- 상태 브러시 -->
-                    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
-                    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
-                    <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}"/>
-                    <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}"/>
+        <!-- 섹션 카드 스타일 -->
+        <Style x:Key="SectionCard" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,16"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="Black" Opacity="0.1" 
+                                    BlurRadius="8" ShadowDepth="2"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                    <!-- 배경 브러시 -->
-                    <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
-                    <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
-                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="{StaticResource CardBackgroundColor}"/>
+        <!-- 상태 테두리 스타일 -->
+        <Style x:Key="StatusBorder" TargetType="Border">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="8,4"/>
+        </Style>
 
-                    <!-- 텍스트 브러시 -->
-                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimaryColor}"/>
-                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}"/>
-                    <SolidColorBrush x:Key="TextOnPrimaryBrush" Color="{StaticResource TextOnPrimaryColor}"/>
-
-                    <!-- 경계선 브러시 -->
-                    <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}"/>
-                    <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource DividerColor}"/>
-                </ResourceDictionary>
-
-                <!-- 기본 테마 스타일 -->
-                <ResourceDictionary>
-                    <!-- 메인 창 스타일 -->
-                    <Style TargetType="{x:Type Window}" x:Key="MainWindowStyle">
-                        <Setter Property="FontFamily" Value="Segoe UI" />
-                        <Setter Property="FontSize" Value="14" />
-                        <Setter Property="Background" Value="{StaticResource BackgroundBrush}" />
-                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-                        <Setter Property="WindowStyle" Value="SingleBorderWindow" />
-                        <Setter Property="ResizeMode" Value="CanResize" />
-                    </Style>
-
-                    <!-- 카드 컨테이너 스타일 (Border로 대체) -->
-                    <Style TargetType="{x:Type Border}" x:Key="SectionCard">
-                        <Setter Property="Margin" Value="8" />
-                        <Setter Property="Padding" Value="16" />
-                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                        <Setter Property="BorderThickness" Value="1" />
-                        <Setter Property="CornerRadius" Value="4" />
-                        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
-                    </Style>
-
-                    <!-- 탭 스타일 -->
-                    <Style TargetType="{x:Type TabControl}" x:Key="MainTabControl">
-                        <Setter Property="TabStripPlacement" Value="Top" />
-                        <Setter Property="Background" Value="{StaticResource BackgroundBrush}" />
-                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                    </Style>
-
-                    <!-- 데이터 그리드 스타일 -->
-                    <Style TargetType="{x:Type DataGrid}" x:Key="MainDataGrid">
-                        <Setter Property="AutoGenerateColumns" Value="False" />
-                        <Setter Property="CanUserAddRows" Value="False" />
-                        <Setter Property="CanUserDeleteRows" Value="False" />
-                        <Setter Property="IsReadOnly" Value="True" />
-                        <Setter Property="SelectionMode" Value="Single" />
-                        <Setter Property="GridLinesVisibility" Value="Horizontal" />
-                        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
-                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-                    </Style>
-
-                    <!-- 버튼 스타일 -->
-                    <Style TargetType="{x:Type Button}" x:Key="PrimaryButton">
-                        <Setter Property="Height" Value="36" />
-                        <Setter Property="MinWidth" Value="88" />
-                        <Setter Property="Margin" Value="4" />
-                        <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
-                        <Setter Property="Foreground" Value="{StaticResource TextOnPrimaryBrush}" />
-                        <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="Cursor" Value="Hand" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
-                                          CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}"/>
-                                        </Trigger>
-                                        <Trigger Property="IsPressed" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-
-                    <Style TargetType="{x:Type Button}" x:Key="SecondaryButton">
-                        <Setter Property="Height" Value="36" />
-                        <Setter Property="MinWidth" Value="88" />
-                        <Setter Property="Margin" Value="4" />
-                        <Setter Property="Background" Value="Transparent" />
-                        <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}" />
-                        <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
-                        <Setter Property="BorderThickness" Value="1" />
-                        <Setter Property="Cursor" Value="Hand" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="{TemplateBinding Background}"
-                                          BorderBrush="{TemplateBinding BorderBrush}"
-                                          BorderThickness="{TemplateBinding BorderThickness}"
-                                          CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource PrimaryLightBrush}"/>
-                                            <Setter Property="Foreground" Value="{StaticResource TextOnPrimaryBrush}"/>
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-
-                    <!-- 텍스트 박스 스타일 -->
-                    <Style TargetType="{x:Type TextBox}" x:Key="MainTextBox">
-                        <Setter Property="Margin" Value="4" />
-                        <Setter Property="Padding" Value="8,4" />
-                        <Setter Property="VerticalAlignment" Value="Center" />
-                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                        <Setter Property="BorderThickness" Value="1" />
-                        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
-                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-                    </Style>
-
-                    <!-- 콤보 박스 스타일 -->
-                    <Style TargetType="{x:Type ComboBox}" x:Key="MainComboBox">
-                        <Setter Property="Margin" Value="4" />
-                        <Setter Property="Padding" Value="8,4" />
-                        <Setter Property="VerticalAlignment" Value="Center" />
-                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                        <Setter Property="BorderThickness" Value="1" />
-                        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
-                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-                    </Style>
-
-                    <!-- 상태 표시 스타일 -->
-                    <Style TargetType="{x:Type Border}" x:Key="StatusBorder">
-                        <Setter Property="CornerRadius" Value="12" />
-                        <Setter Property="Padding" Value="8,4" />
-                        <Setter Property="Margin" Value="4" />
-                    </Style>
-
-                    <!-- 성공 상태 -->
-                    <Style TargetType="{x:Type Border}" x:Key="SuccessStatus" BasedOn="{StaticResource StatusBorder}">
-                        <Setter Property="Background" Value="{StaticResource SuccessBrush}" />
-                    </Style>
-
-                    <!-- 경고 상태 -->
-                    <Style TargetType="{x:Type Border}" x:Key="WarningStatus" BasedOn="{StaticResource StatusBorder}">  
-                        <Setter Property="Background" Value="{StaticResource WarningBrush}" />
-                    </Style>
-
-                    <!-- 오류 상태 -->
-                    <Style TargetType="{x:Type Border}" x:Key="ErrorStatus" BasedOn="{StaticResource StatusBorder}">
-                        <Setter Property="Background" Value="{StaticResource ErrorBrush}" />
-                    </Style>
-
-                    <!-- 차트 컨테이너 스타일 -->
-                    <Style TargetType="{x:Type Border}" x:Key="ChartContainer">
-                        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
-                        <Setter Property="CornerRadius" Value="4" />
-                        <Setter Property="Padding" Value="16" />
-                        <Setter Property="Margin" Value="8" />
-                        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
-                        <Setter Property="BorderThickness" Value="1" />
-                    </Style>
-                </ResourceDictionary>
-            </ResourceDictionary.MergedDictionaries>
-        </ResourceDictionary>
+        <!-- 차트 컨테이너 스타일 -->
+        <Style x:Key="ChartContainer" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+        </Style>
     </Application.Resources>
 </Application>
