@@ -59,6 +59,9 @@ namespace HarvestCraft2.TestClient.ViewModels
         [ObservableProperty]
         private string priceChangeDirection = "None"; // Up, Down, None
 
+        [ObservableProperty]
+        private string selectedItemName = string.Empty;
+
         // ============================================================================
         // Collections
         // ============================================================================
@@ -163,14 +166,14 @@ namespace HarvestCraft2.TestClient.ViewModels
                 PriceHistory.Clear();
                 ChartData.Clear();
 
-                foreach (var record in history.OrderBy(h => h.Timestamp))
+                foreach (var record in history.OrderBy(h => h.Date)) // Timestamp → Date
                 {
                     PriceHistory.Add(record);
                     ChartData.Add(new ChartDataPoint
                     {
-                        Timestamp = record.Timestamp,
-                        BuyPrice = record.BuyPrice,
-                        SellPrice = record.SellPrice,
+                        Timestamp = record.Date, // Date 사용
+                        BuyPrice = record.Price, // Price를 BuyPrice로 사용
+                        SellPrice = record.Price, // Price를 SellPrice로 사용 (동일값)
                         Volume = record.Volume
                     });
                 }
@@ -234,7 +237,7 @@ namespace HarvestCraft2.TestClient.ViewModels
                 if (priceResponse != null)
                 {
                     SelectedItemPrice = priceResponse;
-                    CurrentPrice = priceResponse.BuyPrice;
+                    CurrentPrice = priceResponse.CurrentPrice; // BuyPrice → CurrentPrice
 
                     // 가격 변동 계산
                     CalculatePriceChange(oldPrice, CurrentPrice);
@@ -337,7 +340,7 @@ namespace HarvestCraft2.TestClient.ViewModels
                 }
 
                 AllPrices.Clear();
-                foreach (var price in priceList.OrderBy(p => p.ItemDisplayName))
+                foreach (var price in priceList.OrderBy(p => p.ItemName))
                 {
                     AllPrices.Add(price);
                 }
@@ -350,16 +353,34 @@ namespace HarvestCraft2.TestClient.ViewModels
                 throw;
             }
         }
+        private void InitializeTimeRangeOptions()
+        {
+            TimeRangeOptions.Clear();
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 1시간", Hours = 1 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 6시간", Hours = 6 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 24시간", Hours = 24 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 3일", Hours = 72 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 7일", Hours = 168 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 30일", Hours = 720 });
+        }
 
         private async Task LoadItemDetailsAsync()
         {
-            if (string.IsNullOrEmpty(SelectedItemId)) return;
-
             try
             {
-                // 선택된 아이템의 상세 정보 로드
-                await RefreshCurrentPriceAsync();
-                await LoadPriceHistoryAsync();
+                var priceResponse = await _apiService.GetItemPriceAsync(SelectedItemId);
+
+                if (priceResponse != null)
+                {
+                    SelectedItemPrice = priceResponse;
+                    SelectedItemName = priceResponse.ItemName; // ItemDisplayName → ItemName
+                    CurrentPrice = priceResponse.CurrentPrice;
+
+                    // 이전 가격과 비교하여 변동 계산
+                    CalculatePriceChange(priceResponse.PreviousPrice, priceResponse.CurrentPrice);
+
+                    _logger.LogDebug("아이템 상세 정보 로드: {ItemId} - {ItemName}", SelectedItemId, SelectedItemName);
+                }
             }
             catch (Exception ex)
             {
@@ -378,7 +399,7 @@ namespace HarvestCraft2.TestClient.ViewModels
                 foreach (var data in ChartData.TakeLast(50)) // 최근 50개 데이터포인트
                 {
                     ChartCategories.Add(data.Timestamp.ToString("MM/dd HH:mm"));
-                    ChartValues.Add(data.BuyPrice);
+                    ChartValues.Add(data.BuyPrice); // 이미 올바름 (PriceChartDataPoint 사용)
                 }
 
                 _logger.LogDebug("차트 데이터 업데이트 완료: {Count}개 포인트", ChartData.Count);
@@ -451,11 +472,11 @@ namespace HarvestCraft2.TestClient.ViewModels
         private string GenerateCsvData()
         {
             var csv = new System.Text.StringBuilder();
-            csv.AppendLine("Timestamp,BuyPrice,SellPrice,Volume");
+            csv.AppendLine("Date,Price,Volume,DemandPressure,SupplyPressure"); // 헤더 수정
 
             foreach (var record in PriceHistory)
             {
-                csv.AppendLine($"{record.Timestamp:yyyy-MM-dd HH:mm:ss},{record.BuyPrice},{record.SellPrice},{record.Volume}");
+                csv.AppendLine($"{record.Date:yyyy-MM-dd HH:mm:ss},{record.Price},{record.Volume},{record.DemandPressure},{record.SupplyPressure}");
             }
 
             return csv.ToString();
@@ -527,23 +548,23 @@ namespace HarvestCraft2.TestClient.ViewModels
         }
 
         #endregion
-    }
 
-    // ============================================================================
-    // 보조 클래스들
-    // ============================================================================
+        // ============================================================================
+        // 보조 클래스들
+        // ============================================================================
 
-    public class TimeRangeOption
-    {
-        public string DisplayName { get; set; } = string.Empty;
-        public int Hours { get; set; }
-    }
+        public class TimeRangeOption
+        {
+            public string DisplayName { get; set; } = string.Empty;
+            public int Hours { get; set; }
+        }
 
-    public class ChartDataPoint
-    {
-        public DateTime Timestamp { get; set; }
-        public decimal BuyPrice { get; set; }
-        public decimal SellPrice { get; set; }
-        public int Volume { get; set; }
+        public class ChartDataPoint
+        {
+            public DateTime Timestamp { get; set; }
+            public decimal BuyPrice { get; set; }
+            public decimal SellPrice { get; set; }
+            public int Volume { get; set; }
+        }
     }
 }

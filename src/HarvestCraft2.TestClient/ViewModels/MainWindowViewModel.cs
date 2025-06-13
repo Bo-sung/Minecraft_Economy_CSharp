@@ -294,7 +294,7 @@ namespace HarvestCraft2.TestClient.ViewModels
 
         #region IDisposable
 
-        protected override void Finalize()
+        ~MainWindowViewModel()
         {
             _statusTimer?.Stop();
             _statusTimer?.Dispose();

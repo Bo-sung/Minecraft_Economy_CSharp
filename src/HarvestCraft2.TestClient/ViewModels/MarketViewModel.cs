@@ -17,8 +17,23 @@ namespace HarvestCraft2.TestClient.ViewModels
         private readonly Timer _marketUpdateTimer;
         private readonly CancellationTokenSource _cancellationTokenSource;
 
+        public MarketViewModel(IApiService apiService, IChartService chartService, ILogger<MarketViewModel> logger)
+        {
+            _apiService = apiService ?? throw new ArgumentNullException(nameof(apiService));
+            _chartService = chartService ?? throw new ArgumentNullException(nameof(chartService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _cancellationTokenSource = new CancellationTokenSource();
+
+            InitializeFilterOptions();
+            _marketUpdateTimer = new Timer(async state => await RefreshMarketDataAsync(state),
+                null, TimeSpan.Zero, TimeSpan.FromSeconds(RefreshInterval));
+
+            PropertyChanged += OnPropertyChanged;
+            _logger.LogDebug("MarketViewModel 초기화 완료");
+        }
+
         // ============================================================================
-        // Observable Properties - 시장 대시보드 (기존 구조에 맞춤)
+        // Observable Properties - CommunityToolkit.Mvvm 사용
         // ============================================================================
 
         [ObservableProperty]
@@ -28,15 +43,15 @@ namespace HarvestCraft2.TestClient.ViewModels
         private bool isAutoRefreshEnabled = true;
 
         [ObservableProperty]
-        private int refreshInterval = 10; // 10초 간격
+        private int refreshInterval = 10;
 
         [ObservableProperty]
         private string statusMessage = string.Empty;
 
-        // 기존 MarketDashboardResponse 구조에 맞춤 (Data 속성 없음)
         [ObservableProperty]
         private MarketDashboardResponse? marketDashboard;
 
+        // 개별 대시보드 속성들 - 이게 에러의 원인이었습니다
         [ObservableProperty]
         private int totalOnlinePlayers;
 
@@ -55,10 +70,6 @@ namespace HarvestCraft2.TestClient.ViewModels
         [ObservableProperty]
         private DateTime lastUpdated;
 
-        // ============================================================================
-        // Observable Properties - 필터 및 설정
-        // ============================================================================
-
         [ObservableProperty]
         private int trendingItemsLimit = 10;
 
@@ -72,142 +83,52 @@ namespace HarvestCraft2.TestClient.ViewModels
         private string selectedSortBy = "TransactionCount";
 
         // ============================================================================
-        // Collections (기존 응답 모델 사용)
+        // Collections
         // ============================================================================
 
         public ObservableCollection<PopularItemResponse> PopularItems { get; } = new();
         public ObservableCollection<VolatileItemResponse> VolatileItems { get; } = new();
         public ObservableCollection<CategoryStatsResponse> CategoryStats { get; } = new();
         public ObservableCollection<MarketTrendData> TrendData { get; } = new();
-
-        // 차트 데이터
         public ObservableCollection<ChartDataPoint> PriceChartData { get; } = new();
-        public ObservableCollection<CategoryChartData> CategoryChartData { get; } = new();
+        public ObservableCollection<ChartData_Category> CategoryChartData { get; } = new();
+        public ObservableCollection<string> AvailableCategories { get; } = new();
+        public ObservableCollection<string> AvailableSortOptions { get; } = new();
 
-        // 필터 옵션
-        public ObservableCollection<string> AvailableCategories { get; } = new()
-        {
-            "All", "FOOD_CORE", "CROPS", "FOOD_EXTENDED", "VANILLA", "TOOLS"
-        };
-
-        public ObservableCollection<string> SortOptions { get; } = new()
-        {
-            "TransactionCount", "Price", "Volatility", "Rank"
-        };
-
-        public MarketViewModel(IApiService apiService, IChartService chartService, ILogger<MarketViewModel> logger)
-        {
-            _apiService = apiService;
-            _chartService = chartService;
-            _logger = logger;
-            _cancellationTokenSource = new CancellationTokenSource();
-
-            // 자동 새로고침 타이머 설정
-            _marketUpdateTimer = new Timer(AutoRefreshCallback, null, Timeout.Infinite, Timeout.Infinite);
-
-            // 속성 변경 감지
-            PropertyChanged += OnPropertyChanged;
-        }
-
-        #region Commands
+        // ============================================================================
+        // Commands
+        // ============================================================================
 
         [RelayCommand]
-        private async Task LoadMarketDataAsync()
+        private async Task RefreshDataAsync()
         {
-            IsLoading = true;
-            StatusMessage = "시장 데이터 로딩 중...";
-
             try
             {
+                IsLoading = true;
+                StatusMessage = "시장 데이터를 새로고침하는 중...";
+
                 var cancellationToken = _cancellationTokenSource.Token;
+                await LoadMarketDashboardAsync(cancellationToken);
+                await LoadPopularItemsAsync(cancellationToken);
+                await LoadVolatileItemsAsync(cancellationToken);
+                await LoadCategoryStatsAsync(cancellationToken);
 
-                // 병렬로 모든 시장 데이터 로드
-                var tasks = new List<Task>
-                {
-                    LoadMarketDashboardAsync(cancellationToken),
-                    LoadPopularItemsAsync(cancellationToken),
-                    LoadVolatileItemsAsync(cancellationToken),
-                    LoadCategoryStatsAsync(cancellationToken)
-                };
-
-                await Task.WhenAll(tasks);
-
-                StatusMessage = "시장 데이터 로드 완료";
-                _logger.LogInformation("시장 데이터 로드 완료");
+                StatusMessage = "시장 데이터 새로고침 완료";
+                _logger.LogInformation("시장 데이터 새로고침 완료");
             }
             catch (OperationCanceledException)
             {
-                StatusMessage = "시장 데이터 로드 취소됨";
-                _logger.LogInformation("시장 데이터 로드 취소");
+                StatusMessage = "데이터 새로고침이 취소되었습니다.";
+                _logger.LogWarning("시장 데이터 새로고침 취소됨");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "시장 데이터 로드 실패");
-                StatusMessage = $"시장 데이터 로드 실패: {ex.Message}";
+                StatusMessage = $"새로고침 실패: {ex.Message}";
+                _logger.LogError(ex, "시장 데이터 새로고침 실패");
             }
             finally
             {
                 IsLoading = false;
-            }
-        }
-
-        [RelayCommand]
-        private async Task RefreshMarketDashboardAsync()
-        {
-            try
-            {
-                var cancellationToken = _cancellationTokenSource.Token;
-                await LoadMarketDashboardAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "시장 대시보드 새로고침 실패");
-                StatusMessage = $"새로고침 실패: {ex.Message}";
-            }
-        }
-
-        [RelayCommand]
-        private async Task RefreshPopularItemsAsync()
-        {
-            try
-            {
-                var cancellationToken = _cancellationTokenSource.Token;
-                await LoadPopularItemsAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "인기 아이템 새로고침 실패");
-                StatusMessage = $"인기 아이템 새로고침 실패: {ex.Message}";
-            }
-        }
-
-        [RelayCommand]
-        private async Task RefreshVolatileItemsAsync()
-        {
-            try
-            {
-                var cancellationToken = _cancellationTokenSource.Token;
-                await LoadVolatileItemsAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "변동성 아이템 새로고침 실패");
-                StatusMessage = $"변동성 아이템 새로고침 실패: {ex.Message}";
-            }
-        }
-
-        [RelayCommand]
-        private async Task RefreshCategoryStatsAsync()
-        {
-            try
-            {
-                var cancellationToken = _cancellationTokenSource.Token;
-                await LoadCategoryStatsAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "카테고리 통계 새로고침 실패");
-                StatusMessage = $"카테고리 통계 새로고침 실패: {ex.Message}";
             }
         }
 
@@ -219,110 +140,51 @@ namespace HarvestCraft2.TestClient.ViewModels
             if (IsAutoRefreshEnabled)
             {
                 StartAutoRefresh();
-                StatusMessage = $"자동 새로고침 시작 ({RefreshInterval}초 간격)";
+                StatusMessage = "자동 새로고침이 활성화되었습니다.";
             }
             else
             {
-                StopAutoRefresh();
-                StatusMessage = "자동 새로고침 중지";
+                _marketUpdateTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+                StatusMessage = "자동 새로고침이 비활성화되었습니다.";
             }
+
+            _logger.LogInformation("자동 새로고침: {IsEnabled}", IsAutoRefreshEnabled);
         }
 
-        [RelayCommand]
-        private async Task ApplyFiltersAsync()
+        // ============================================================================
+        // Private Methods
+        // ============================================================================
+
+        private void InitializeFilterOptions()
         {
-            IsLoading = true;
-            StatusMessage = "필터 적용 중...";
+            AvailableCategories.Add("All");
+            AvailableCategories.Add("Food");
+            AvailableCategories.Add("Crops");
+            AvailableCategories.Add("Tools");
+            AvailableCategories.Add("Materials");
 
-            try
-            {
-                var cancellationToken = _cancellationTokenSource.Token;
-
-                // 필터가 적용된 데이터 다시 로드
-                await LoadPopularItemsAsync(cancellationToken);
-                await LoadVolatileItemsAsync(cancellationToken);
-
-                if (SelectedCategory != "All")
-                {
-                    await LoadCategoryStatsAsync(cancellationToken);
-                }
-
-                StatusMessage = $"필터 적용 완료: {SelectedCategory}";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "필터 적용 실패");
-                StatusMessage = $"필터 적용 실패: {ex.Message}";
-            }
-            finally
-            {
-                IsLoading = false;
-            }
+            AvailableSortOptions.Add("TransactionCount");
+            AvailableSortOptions.Add("Price");
+            AvailableSortOptions.Add("PriceChange");
+            AvailableSortOptions.Add("Volatility");
         }
 
-        [RelayCommand]
-        private async Task ExportMarketReportAsync()
+        private void StartAutoRefresh()
         {
-            if (MarketDashboard == null)
-            {
-                StatusMessage = "내보낼 시장 데이터가 없습니다.";
-                return;
-            }
-
-            try
-            {
-                IsLoading = true;
-                StatusMessage = "시장 리포트 생성 중...";
-
-                var report = GenerateMarketReport();
-
-                StatusMessage = "시장 리포트 생성 완료";
-                _logger.LogInformation("시장 리포트 생성 완료");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "시장 리포트 생성 실패");
-                StatusMessage = $"리포트 생성 실패: {ex.Message}";
-            }
-            finally
-            {
-                IsLoading = false;
-            }
+            var interval = TimeSpan.FromSeconds(RefreshInterval);
+            _marketUpdateTimer?.Change(TimeSpan.Zero, interval);
         }
-
-        [RelayCommand]
-        private async Task ShowItemDetailsAsync(string itemId)
-        {
-            if (string.IsNullOrEmpty(itemId)) return;
-
-            try
-            {
-                StatusMessage = $"아이템 상세 정보: {itemId}";
-                _logger.LogDebug("아이템 상세 정보 요청: {ItemId}", itemId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "아이템 상세 정보 표시 실패: {ItemId}", itemId);
-                StatusMessage = $"아이템 정보 표시 실패: {ex.Message}";
-            }
-        }
-
-        #endregion
-
-        #region Data Loading (기존 IApiService 메서드 구조에 맞춤)
 
         private async Task LoadMarketDashboardAsync(CancellationToken cancellationToken)
         {
             try
             {
-                // 기존 IApiService: GetMarketDashboardAsync() → MarketDashboardResponse 직접 반환
                 var dashboard = await _apiService.GetMarketDashboardAsync(cancellationToken);
-
                 if (dashboard != null)
                 {
                     MarketDashboard = dashboard;
 
-                    // MarketDashboardResponse의 실제 속성들 사용
+                    // Observable Properties 직접 설정 - 이게 핵심!
                     TotalOnlinePlayers = dashboard.TotalOnlinePlayers;
                     TotalTransactions24h = dashboard.TotalTransactions24h;
                     TotalVolume24h = dashboard.TotalVolume24h;
@@ -330,9 +192,7 @@ namespace HarvestCraft2.TestClient.ViewModels
                     AveragePrice = dashboard.AveragePrice;
                     LastUpdated = DateTime.Now;
 
-                    // 트렌드 데이터 업데이트
                     UpdateTrendData(dashboard);
-
                     _logger.LogDebug("시장 대시보드 로드 완료");
                 }
             }
@@ -347,7 +207,6 @@ namespace HarvestCraft2.TestClient.ViewModels
         {
             try
             {
-                // 기존 IApiService: GetPopularItemsAsync() → List<PopularItemResponse> 직접 반환
                 var popularItems = await _apiService.GetPopularItemsAsync(TrendingItemsLimit, cancellationToken);
 
                 PopularItems.Clear();
@@ -372,7 +231,6 @@ namespace HarvestCraft2.TestClient.ViewModels
         {
             try
             {
-                // 기존 IApiService: GetVolatileItemsAsync() → List<VolatileItemResponse> 직접 반환
                 var volatileItems = await _apiService.GetVolatileItemsAsync(VolatileItemsLimit, cancellationToken);
 
                 VolatileItems.Clear();
@@ -397,7 +255,6 @@ namespace HarvestCraft2.TestClient.ViewModels
         {
             try
             {
-                // 기존 IApiService: GetCategoryStatsAsync() → List<CategoryStatsResponse> 직접 반환
                 var categoryStats = await _apiService.GetCategoryStatsAsync(cancellationToken);
 
                 CategoryStats.Clear();
@@ -409,14 +266,14 @@ namespace HarvestCraft2.TestClient.ViewModels
                     {
                         CategoryStats.Add(stat);
 
-                        // 기존 CategoryStatsResponse 속성 사용 (실제 정의에 맞춤)
-                        CategoryChartData.Add(new CategoryChartData
+                        // CategoryStatsResponse의 실제 속성만 사용
+                        CategoryChartData.Add(new ChartData_Category
                         {
-                            CategoryName = stat.Category ?? "Unknown", // 'Category' 속성 사용
+                            CategoryName = stat.Category ?? "Unknown",
                             ItemCount = stat.ItemCount,
-                            AveragePrice = stat.AveragePrice,
-                            TotalVolume = stat.TotalVolume, // long 타입이므로 decimal로 변환
-                            MostPopularItem = "해당없음" // 임시값 - 실제 속성 확인 필요
+                            AveragePrice = 0m, // CategoryStatsResponse에 AveragePrice 없음 - 기본값 설정
+                            TotalVolume = stat.TotalVolume, // long → decimal 변환
+                            MostPopularItem = "데이터 없음" // CategoryStatsResponse에 MostPopularItem 없음 - 기본값 설정
                         });
                     }
                 }
@@ -430,22 +287,7 @@ namespace HarvestCraft2.TestClient.ViewModels
             }
         }
 
-        #endregion
-
-        #region Auto Refresh
-
-        private void StartAutoRefresh()
-        {
-            StopAutoRefresh();
-            _marketUpdateTimer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(RefreshInterval));
-        }
-
-        private void StopAutoRefresh()
-        {
-            _marketUpdateTimer.Change(Timeout.Infinite, Timeout.Infinite);
-        }
-
-        private async void AutoRefreshCallback(object? state)
+        private async Task RefreshMarketDataAsync(object? state)
         {
             if (!IsAutoRefreshEnabled || IsLoading) return;
 
@@ -464,10 +306,6 @@ namespace HarvestCraft2.TestClient.ViewModels
             }
         }
 
-        #endregion
-
-        #region Data Analysis
-
         private void UpdateTrendData(MarketDashboardResponse dashboard)
         {
             try
@@ -484,13 +322,11 @@ namespace HarvestCraft2.TestClient.ViewModels
 
                 TrendData.Add(trendPoint);
 
-                // 최근 100개 데이터포인트만 유지 (메모리 관리)
                 while (TrendData.Count > 100)
                 {
                     TrendData.RemoveAt(0);
                 }
 
-                // 차트 데이터 업데이트
                 UpdateChartData();
             }
             catch (Exception ex)
@@ -505,7 +341,7 @@ namespace HarvestCraft2.TestClient.ViewModels
             {
                 PriceChartData.Clear();
 
-                foreach (var trend in TrendData.TakeLast(50)) // 최근 50개 포인트
+                foreach (var trend in TrendData.TakeLast(50))
                 {
                     PriceChartData.Add(new ChartDataPoint
                     {
@@ -522,44 +358,6 @@ namespace HarvestCraft2.TestClient.ViewModels
                 _logger.LogError(ex, "차트 데이터 업데이트 실패");
             }
         }
-
-        private string GenerateMarketReport()
-        {
-            if (MarketDashboard == null) return string.Empty;
-
-            var report = new System.Text.StringBuilder();
-            report.AppendLine("=== HarvestCraft 2 시장 분석 리포트 ===");
-            report.AppendLine($"생성 시간: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-            report.AppendLine();
-
-            report.AppendLine("## 시장 개요");
-            report.AppendLine($"온라인 플레이어: {TotalOnlinePlayers:N0}명");
-            report.AppendLine($"활성 아이템: {ActiveItems:N0}개");
-            report.AppendLine($"24시간 거래량: {TotalTransactions24h:N0}건");
-            report.AppendLine($"24시간 거래액: {TotalVolume24h:C}");
-            report.AppendLine($"평균 가격: {AveragePrice:C}");
-            report.AppendLine($"마지막 업데이트: {LastUpdated:yyyy-MM-dd HH:mm:ss}");
-            report.AppendLine();
-
-            report.AppendLine("## 인기 아이템 TOP 10");
-            foreach (var item in PopularItems.Take(10))
-            {
-                report.AppendLine($"- {item.ItemName ?? item.ItemId}: {item.Volume24h}회 거래, {item.Price:C}");
-            }
-            report.AppendLine();
-
-            report.AppendLine("## 변동성 큰 아이템 TOP 10");
-            foreach (var item in VolatileItems.Take(10))
-            {
-                report.AppendLine($"- {item.ItemName ?? item.ItemId}: {item.Volatility:P2} 변동, {item.CurrentPrice:C}");
-            }
-
-            return report.ToString();
-        }
-
-        #endregion
-
-        #region Event Handlers
 
         private async void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -588,10 +386,6 @@ namespace HarvestCraft2.TestClient.ViewModels
             }
         }
 
-        #endregion
-
-        #region Dispose
-
         public void Dispose()
         {
             _cancellationTokenSource?.Cancel();
@@ -599,36 +393,34 @@ namespace HarvestCraft2.TestClient.ViewModels
             _marketUpdateTimer?.Dispose();
         }
 
-        #endregion
-    }
+        // ============================================================================
+        // Market 전용 차트 데이터 클래스들 (중복 방지)
+        // ============================================================================
 
-    // ============================================================================
-    // 보조 클래스들 (기존 구조에 맞춤)
-    // ============================================================================
+        public class MarketTrendData
+        {
+            public DateTime Timestamp { get; set; }
+            public int OnlinePlayerCount { get; set; }
+            public int ActiveItemCount { get; set; }
+            public decimal AveragePrice { get; set; }
+            public long TotalTransactions { get; set; }
+            public decimal TotalVolume { get; set; }
+        }
 
-    public class MarketTrendData
-    {
-        public DateTime Timestamp { get; set; }
-        public int OnlinePlayerCount { get; set; }
-        public int ActiveItemCount { get; set; }
-        public decimal AveragePrice { get; set; }
-        public long TotalTransactions { get; set; }
-        public decimal TotalVolume { get; set; }
-    }
+        public class ChartData_Category
+        {
+            public string CategoryName { get; set; } = string.Empty;
+            public int ItemCount { get; set; }
+            public decimal AveragePrice { get; set; }
+            public long TotalVolume { get; set; }
+            public string MostPopularItem { get; set; } = string.Empty;
+        }
 
-    public class CategoryChartData
-    {
-        public string CategoryName { get; set; } = string.Empty;
-        public int ItemCount { get; set; }
-        public decimal AveragePrice { get; set; }
-        public long TotalVolume { get; set; }
-        public string MostPopularItem { get; set; } = string.Empty;
-    }
-
-    public class ChartDataPoint
-    {
-        public DateTime Timestamp { get; set; }
-        public double Value { get; set; }
-        public int Volume { get; set; }
+        public class ChartDataPoint
+        {
+            public DateTime Timestamp { get; set; }
+            public double Value { get; set; }
+            public int Volume { get; set; }
+        }
     }
 }

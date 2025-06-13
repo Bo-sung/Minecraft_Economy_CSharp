@@ -15,6 +15,10 @@ namespace HarvestCraft2.TestClient.ViewModels
         private readonly IPlayerService _playerService;
         private readonly ILogger<ShopViewModel> _logger;
 
+        // ============================================================================
+        // Observable Properties
+        // ============================================================================
+
         [ObservableProperty]
         private string selectedPlayerId = string.Empty;
 
@@ -39,6 +43,10 @@ namespace HarvestCraft2.TestClient.ViewModels
         [ObservableProperty]
         private PriceResponse? selectedItemPrice;
 
+        // ============================================================================
+        // Collections
+        // ============================================================================
+
         public ObservableCollection<PlayerResponse> Players { get; } = new();
         public ObservableCollection<PriceResponse> Items { get; } = new();
         public ObservableCollection<TransactionResponse> TransactionHistory { get; } = new();
@@ -53,17 +61,25 @@ namespace HarvestCraft2.TestClient.ViewModels
             "pamhc2foodcore:lettuce", "pamhc2foodcore:onion", "pamhc2foodcore:garlic"
         };
 
+        // ============================================================================
+        // Constructor
+        // ============================================================================
+
         public ShopViewModel(IApiService apiService, IPlayerService playerService, ILogger<ShopViewModel> logger)
         {
-            _apiService = apiService;
-            _playerService = playerService;
-            _logger = logger;
+            _apiService = apiService ?? throw new ArgumentNullException(nameof(apiService));
+            _playerService = playerService ?? throw new ArgumentNullException(nameof(playerService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             // 속성 변경 시 가격 자동 계산
             PropertyChanged += OnPropertyChanged;
+
+            _logger.LogDebug("ShopViewModel 초기화 완료");
         }
 
-        #region Commands
+        // ============================================================================
+        // Commands
+        // ============================================================================
 
         [RelayCommand]
         private async Task LoadDataAsync()
@@ -80,6 +96,7 @@ namespace HarvestCraft2.TestClient.ViewModels
                 await LoadItemPricesAsync();
 
                 StatusMessage = "데이터 로드 완료";
+                _logger.LogInformation("상점 데이터 로드 완료");
             }
             catch (Exception ex)
             {
@@ -102,12 +119,11 @@ namespace HarvestCraft2.TestClient.ViewModels
 
             try
             {
-                // 기존 IApiService의 PurchaseItemAsync 사용
                 var response = await _apiService.PurchaseItemAsync(SelectedPlayerId, SelectedItemId, Quantity);
 
-                if (response != null)
+                if (response?.Success == true)
                 {
-                    StatusMessage = $"구매 완료! 총 비용: {response.TotalCost:C}, 잔액: {response.PlayerBalance:C}";
+                    StatusMessage = $"구매 완료! 총 비용: {response.TotalCost:C}, 잔액: {response.NewBalance:C}";
 
                     // 거래 내역 갱신
                     await LoadTransactionHistoryAsync();
@@ -117,10 +133,14 @@ namespace HarvestCraft2.TestClient.ViewModels
 
                     // 수량 초기화
                     Quantity = 1;
+
+                    _logger.LogInformation("구매 완료: {PlayerId} - {ItemId} x{Quantity}",
+                        SelectedPlayerId, SelectedItemId, Quantity);
                 }
                 else
                 {
-                    StatusMessage = "구매 실패: 응답을 받지 못했습니다.";
+                    StatusMessage = response?.ErrorMessage ?? "구매 실패: 응답을 받지 못했습니다.";
+                    _logger.LogWarning("구매 실패: {PlayerId} - {Message}", SelectedPlayerId, StatusMessage);
                 }
             }
             catch (Exception ex)
@@ -144,12 +164,11 @@ namespace HarvestCraft2.TestClient.ViewModels
 
             try
             {
-                // 기존 IApiService의 SellItemAsync 사용
                 var response = await _apiService.SellItemAsync(SelectedPlayerId, SelectedItemId, Quantity);
 
-                if (response != null)
+                if (response?.Success == true)
                 {
-                    StatusMessage = $"판매 완료! 총 수익: {response.TotalRevenue:C}, 잔액: {response.PlayerBalance:C}";
+                    StatusMessage = $"판매 완료! 총 수익: {response.TotalEarned:C}, 잔액: {response.NewBalance:C}";
 
                     // 거래 내역 갱신
                     await LoadTransactionHistoryAsync();
@@ -159,10 +178,14 @@ namespace HarvestCraft2.TestClient.ViewModels
 
                     // 수량 초기화
                     Quantity = 1;
+
+                    _logger.LogInformation("판매 완료: {PlayerId} - {ItemId} x{Quantity}",
+                        SelectedPlayerId, SelectedItemId, Quantity);
                 }
                 else
                 {
-                    StatusMessage = "판매 실패: 응답을 받지 못했습니다.";
+                    StatusMessage = response?.ErrorMessage ?? "판매 실패: 응답을 받지 못했습니다.";
+                    _logger.LogWarning("판매 실패: {PlayerId} - {Message}", SelectedPlayerId, StatusMessage);
                 }
             }
             catch (Exception ex)
@@ -186,18 +209,21 @@ namespace HarvestCraft2.TestClient.ViewModels
 
             try
             {
-                // 기존 IApiService의 CreatePlayerAsync 사용 (초기 잔액 1000원)
                 var response = await _apiService.CreatePlayerAsync(playerName, 1000m);
 
                 if (response != null)
                 {
                     await LoadPlayersAsync();
                     SelectedPlayerId = response.PlayerId;
-                    StatusMessage = $"테스트 플레이어 생성 완료: {playerName} (잔액: {response.Balance:C})";
+                    StatusMessage = $"테스트 플레이어 생성 완료: {playerName} (잔액: {1000m:C})";
+
+                    _logger.LogInformation("테스트 플레이어 생성: {PlayerName} - {PlayerId}",
+                        playerName, response.PlayerId);
                 }
                 else
                 {
                     StatusMessage = "플레이어 생성 실패: 응답을 받지 못했습니다.";
+                    _logger.LogWarning("플레이어 생성 실패: {PlayerName}", playerName);
                 }
             }
             catch (Exception ex)
@@ -225,15 +251,68 @@ namespace HarvestCraft2.TestClient.ViewModels
             await LoadItemPricesAsync();
         }
 
-        #endregion
+        [RelayCommand]
+        private async Task ExecuteBatchTransactionsAsync()
+        {
+            if (!CanExecuteTransaction()) return;
 
-        #region Data Loading
+            IsLoading = true;
+            StatusMessage = "배치 거래 실행 중...";
+
+            try
+            {
+                var trades = new List<Services.TradeRequest>(); // Services.TradeRequest 사용
+                var batchSize = 5;
+
+                for (int i = 0; i < batchSize; i++)
+                {
+                    trades.Add(new Services.TradeRequest
+                    {
+                        ItemId = SelectedItemId,
+                        Quantity = 1,
+                        IsPurchase = i % 2 == 0
+                    });
+                }
+
+                var response = await _apiService.BatchTradeAsync(SelectedPlayerId, trades);
+
+                if (response?.Success == true)
+                {
+                    var successCount = response.TransactionIds.Count;
+                    var failureCount = response.Errors.Count;
+                    StatusMessage = $"배치 거래 완료: {successCount}건 성공, {failureCount}건 실패";
+
+                    await LoadTransactionHistoryAsync();
+                    await UpdateItemPriceAsync();
+
+                    _logger.LogInformation("배치 거래 완료: {SuccessCount}건 성공, {FailureCount}건 실패",
+                        successCount, failureCount);
+                }
+                else
+                {
+                    StatusMessage = "배치 거래 실패: 응답을 받지 못했습니다.";
+                    _logger.LogWarning("배치 거래 실패: {PlayerId}", SelectedPlayerId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "배치 거래 실행 실패");
+                StatusMessage = $"배치 거래 실패: {ex.Message}";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+        // ============================================================================
+        // Data Loading
+        // ============================================================================
 
         private async Task LoadPlayersAsync()
         {
             try
             {
-                // 기존 IApiService의 GetOnlinePlayersAsync 사용
                 var players = await _apiService.GetOnlinePlayersAsync();
 
                 Players.Clear();
@@ -293,7 +372,6 @@ namespace HarvestCraft2.TestClient.ViewModels
 
             try
             {
-                // 기존 IApiService의 GetPlayerTransactionsAsync 사용 (최근 20건)
                 var transactions = await _apiService.GetPlayerTransactionsAsync(SelectedPlayerId, page: 1, size: 20);
 
                 TransactionHistory.Clear();
@@ -340,9 +418,9 @@ namespace HarvestCraft2.TestClient.ViewModels
             }
         }
 
-        #endregion
-
-        #region Price Calculation
+        // ============================================================================
+        // Price Calculation
+        // ============================================================================
 
         private void CalculateEstimatedValues()
         {
@@ -353,13 +431,14 @@ namespace HarvestCraft2.TestClient.ViewModels
                 return;
             }
 
-            EstimatedCost = SelectedItemPrice.BuyPrice * Quantity;
-            EstimatedRevenue = SelectedItemPrice.SellPrice * Quantity;
+            // PriceResponse에는 CurrentPrice만 있음 - BuyPrice/SellPrice 없음
+            EstimatedCost = SelectedItemPrice.CurrentPrice * Quantity;
+            EstimatedRevenue = SelectedItemPrice.CurrentPrice * 0.8m * Quantity; // 판매가는 80% 가정
         }
 
-        #endregion
-
-        #region Event Handlers
+        // ============================================================================
+        // Event Handlers
+        // ============================================================================
 
         private async void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -386,9 +465,9 @@ namespace HarvestCraft2.TestClient.ViewModels
             }
         }
 
-        #endregion
-
-        #region Command Validation
+        // ============================================================================
+        // Command Validation
+        // ============================================================================
 
         private bool CanExecuteTransaction()
         {
@@ -399,61 +478,15 @@ namespace HarvestCraft2.TestClient.ViewModels
                    SelectedItemPrice != null;
         }
 
-        #endregion
+        // ============================================================================
+        // 내부 클래스들 - ShopViewModel 전용
+        // ============================================================================
 
-        #region Batch Operations
-
-        [RelayCommand]
-        private async Task ExecuteBatchTransactionsAsync()
+        public class TradeRequest
         {
-            // 대량 거래 테스트를 위한 배치 처리
-            if (!CanExecuteTransaction()) return;
-
-            IsLoading = true;
-            StatusMessage = "배치 거래 실행 중...";
-
-            try
-            {
-                var trades = new List<TradeRequest>();
-                var batchSize = 5; // 5개씩 배치 처리
-
-                for (int i = 0; i < batchSize; i++)
-                {
-                    trades.Add(new TradeRequest
-                    {
-                        ItemId = SelectedItemId,
-                        Quantity = 1,
-                        IsPurchase = i % 2 == 0 // 구매와 판매 번갈아 실행
-                    });
-                }
-
-                // 기존 IApiService의 BatchTradeAsync 사용
-                var response = await _apiService.BatchTradeAsync(SelectedPlayerId, trades);
-
-                if (response != null)
-                {
-                    StatusMessage = $"배치 거래 완료: {response.SuccessCount}건 성공, {response.FailureCount}건 실패";
-
-                    // 데이터 갱신
-                    await LoadTransactionHistoryAsync();
-                    await UpdateItemPriceAsync();
-                }
-                else
-                {
-                    StatusMessage = "배치 거래 실패: 응답을 받지 못했습니다.";
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "배치 거래 실행 실패");
-                StatusMessage = $"배치 거래 실패: {ex.Message}";
-            }
-            finally
-            {
-                IsLoading = false;
-            }
+            public string ItemId { get; set; } = string.Empty;
+            public int Quantity { get; set; }
+            public bool IsPurchase { get; set; }
         }
-
-        #endregion
     }
 }
