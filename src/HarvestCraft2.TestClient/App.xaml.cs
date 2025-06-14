@@ -143,12 +143,12 @@ namespace HarvestCraft2.TestClient
             services.AddSingleton<IApiService, ApiService>();
             services.AddSingleton<IPlayerService, PlayerService>();
             services.AddSingleton<IChartService, ChartService>();
-            //services.AddSingleton<ISettingsService, SettingsService>();
-            //services.AddSingleton<INotificationService, NotificationService>();
+            services.AddSingleton<ISettingsService, SettingsService>();
+            services.AddSingleton<INotificationService, NotificationService>();
 
             // 유틸리티 서비스
-            //services.AddSingleton<IDialogService, DialogService>();
-            //services.AddTransient<IExportService, ExportService>();
+            services.AddSingleton<IDialogService, DialogService>();
+            services.AddTransient<IExportService, ExportService>();
         }
 
         /// <summary>
@@ -156,8 +156,6 @@ namespace HarvestCraft2.TestClient
         /// </summary>
         private static void RegisterViewModels(IServiceCollection services)
         {
-            // TODO: Phase 3에서 구현 예정
-            /*
             services.AddTransient<MainWindowViewModel>();
             services.AddTransient<ShopViewModel>();
             services.AddTransient<PriceViewModel>();
@@ -165,7 +163,6 @@ namespace HarvestCraft2.TestClient
             services.AddTransient<PlayerViewModel>();
             services.AddTransient<AdminViewModel>();
             services.AddTransient<SettingsViewModel>();
-            */
         }
 
         /// <summary>

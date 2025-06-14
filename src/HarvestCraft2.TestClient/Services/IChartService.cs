@@ -529,12 +529,20 @@ namespace HarvestCraft2.TestClient.Services
         Diverging
     }
 
+
+    /// <summary>
+    /// 내보내기 형식 열거형
+    /// </summary>
     public enum ExportFormat
     {
         CSV,
         JSON,
+        XML,
+        PDF,
         Excel,
-        PDF
+        PNG,
+        JPEG,
+        SVG
     }
 
     public class ChartColor
