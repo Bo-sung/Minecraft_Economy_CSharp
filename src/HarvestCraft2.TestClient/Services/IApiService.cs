@@ -41,6 +41,27 @@ namespace HarvestCraft2.TestClient.Services
         Task<ApiStatusResponse> GetStatusAsync(CancellationToken cancellationToken = default);
 
         // ============================================================================
+        // 설정 관리 (새로 추가)
+        // ============================================================================
+
+        /// <summary>
+        /// 런타임에 API 설정을 업데이트합니다.
+        /// </summary>
+        /// <param name="settings">새로운 API 설정</param>
+        Task UpdateSettingsAsync(ApiSettings settings);
+
+        /// <summary>
+        /// API 설정을 object로 받아서 업데이트합니다. (ViewModel에서 사용)
+        /// </summary>
+        /// <param name="settingsObject">설정 객체</param>
+        Task UpdateSettingsAsync(object settingsObject);
+
+        /// <summary>
+        /// 현재 API 설정을 반환합니다.
+        /// </summary>
+        ApiSettings GetCurrentSettings();
+
+        // ============================================================================
         // 상점 관련 API
         // ============================================================================
 
@@ -188,6 +209,11 @@ namespace HarvestCraft2.TestClient.Services
         /// API 오류 발생 이벤트
         /// </summary>
         event EventHandler<ApiErrorEventArgs> ApiError;
+
+        /// <summary>
+        /// 설정 업데이트 이벤트 (새로 추가)
+        /// </summary>
+        event EventHandler<SettingsUpdatedEventArgs> SettingsUpdated;
     }
 
     // ============================================================================
@@ -217,6 +243,16 @@ namespace HarvestCraft2.TestClient.Services
         public string ErrorMessage { get; set; } = string.Empty;
         public Exception? Exception { get; set; }
         public DateTime OccurredAt { get; set; }
+    }
+
+    /// <summary>
+    /// 설정 업데이트 이벤트 인수
+    /// </summary>
+    public class SettingsUpdatedEventArgs : EventArgs
+    {
+        public ApiSettings OldSettings { get; set; } = new();
+        public ApiSettings NewSettings { get; set; } = new();
+        public DateTime UpdatedAt { get; set; }
     }
 
     // ============================================================================
@@ -433,5 +469,30 @@ namespace HarvestCraft2.TestClient.Models
         public int DeletedTransactions { get; set; }
         public int DeletedPriceHistory { get; set; }
         public string? ErrorMessage { get; set; }
+    }
+
+    /// <summary>
+    /// API 설정 모델 (새로 추가)
+    /// </summary>
+    public class ApiSettings
+    {
+        public string BaseUrl { get; set; } = "http://localhost:5000";
+        public string ApiKey { get; set; } = string.Empty;
+        public int TimeoutSeconds { get; set; } = 30;
+        public int RetryCount { get; set; } = 3;
+        public bool UseHttps { get; set; } = false;
+    }
+
+    /// <summary>
+    /// UI 설정 모델 (새로 추가)
+    /// </summary>
+    public class UiSettings
+    {
+        public string Theme { get; set; } = "Light";
+        public string Language { get; set; } = "ko-KR";
+        public bool ShowNotifications { get; set; } = true;
+        public bool AutoRefresh { get; set; } = true;
+        public int RefreshIntervalSeconds { get; set; } = 30;
+        public bool ShowAdvancedFeatures { get; set; } = false;
     }
 }

@@ -45,6 +45,9 @@ namespace HarvestCraft2.TestClient.ViewModels
             InitializeTimer();
             InitializeCollections();
             LoadConfiguration();
+
+            // ApiService 이벤트 구독
+            SubscribeToApiServiceEvents();
         }
 
         #endregion
@@ -112,7 +115,7 @@ namespace HarvestCraft2.TestClient.ViewModels
 
         #region 상태바
 
-        private string _progressText = "Phase 3: 뷰모델 (85%)";
+        private string _progressText = "Phase 4: 설정 연동 완료 (100%)";
         public string ProgressText
         {
             get => _progressText;
@@ -355,10 +358,13 @@ namespace HarvestCraft2.TestClient.ViewModels
             {
                 var apiSettings = _configuration.GetSection("ApiSettings");
                 ApiBaseUrl = apiSettings.GetValue<string>("BaseUrl") ?? "http://localhost:5000";
+                ApiKey = apiSettings.GetValue<string>("ApiKey") ?? string.Empty;
+                TimeoutSeconds = apiSettings.GetValue<int>("TimeoutSeconds", 30);
 
-                var uiSettings = _configuration.GetSection("UISettings");
-                IsAutoRefreshEnabled = uiSettings.GetValue<bool>("AutoRefresh");
-                ShowNotifications = uiSettings.GetValue<bool>("ShowNotifications");
+                var uiSettings = _configuration.GetSection("UiSettings");
+                IsAutoRefreshEnabled = uiSettings.GetValue<bool>("AutoRefresh", true);
+                ShowNotifications = uiSettings.GetValue<bool>("ShowNotifications", true);
+                ShowAdvancedFeatures = uiSettings.GetValue<bool>("ShowAdvancedFeatures", false);
 
                 StatusMessage = "설정을 로드했습니다.";
                 _logger.LogInformation("MainWindow 설정이 로드되었습니다.");
@@ -367,6 +373,24 @@ namespace HarvestCraft2.TestClient.ViewModels
             {
                 StatusMessage = $"설정 로드 실패: {ex.Message}";
                 _logger.LogError(ex, "설정 로드 중 오류가 발생했습니다.");
+            }
+        }
+
+        /// <summary>
+        /// ApiService 이벤트 구독
+        /// </summary>
+        private void SubscribeToApiServiceEvents()
+        {
+            if (_apiService != null)
+            {
+                // 연결 상태 변경 이벤트 구독
+                _apiService.ConnectionStatusChanged += OnApiServiceConnectionChanged;
+
+                // 설정 업데이트 이벤트 구독
+                _apiService.SettingsUpdated += OnApiServiceSettingsUpdated;
+
+                // 초기 연결 상태 동기화
+                IsConnected = _apiService.IsConnected;
             }
         }
 
@@ -532,6 +556,9 @@ namespace HarvestCraft2.TestClient.ViewModels
             });
         }
 
+        /// <summary>
+        /// 설정 저장 (완전 수정됨)
+        /// </summary>
         private async Task SaveSettingsAsync()
         {
             await ExecuteAsync(async () =>
@@ -547,73 +574,44 @@ namespace HarvestCraft2.TestClient.ViewModels
                         return;
                     }
 
-                    // 2. appsettings.json 경로
-                    var appSettingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
-
-                    // 3. 기존 설정 파일 읽기
-                    var jsonContent = "{}";
-                    if (File.Exists(appSettingsPath))
+                    // 2. API 설정 객체 생성
+                    var apiSettings = new ApiSettings
                     {
-                        jsonContent = await File.ReadAllTextAsync(appSettingsPath);
-                    }
+                        BaseUrl = ApiBaseUrl?.Trim() ?? "http://localhost:5000",
+                        ApiKey = ApiKey?.Trim() ?? string.Empty,
+                        TimeoutSeconds = TimeoutSeconds,
+                        RetryCount = 3,
+                        UseHttps = ApiBaseUrl?.StartsWith("https://") == true
+                    };
 
-                    // 4. JSON 파싱 및 업데이트
-                    using var document = JsonDocument.Parse(jsonContent);
-                    using var stream = new MemoryStream();
-                    using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
-
-                    writer.WriteStartObject();
-
-                    // 기존 설정 복사 (ApiSettings, UiSettings 제외)
-                    foreach (var property in document.RootElement.EnumerateObject())
+                    // 3. UI 설정 객체 생성
+                    var uiSettings = new UiSettings
                     {
-                        if (property.Name != "ApiSettings" && property.Name != "UiSettings")
-                        {
-                            property.WriteTo(writer);
-                        }
-                    }
+                        Theme = "Light",
+                        Language = "ko-KR",
+                        ShowNotifications = ShowNotifications,
+                        AutoRefresh = IsAutoRefreshEnabled,
+                        RefreshIntervalSeconds = 30,
+                        ShowAdvancedFeatures = ShowAdvancedFeatures
+                    };
 
-                    // 5. ApiSettings 업데이트
-                    writer.WritePropertyName("ApiSettings");
-                    writer.WriteStartObject();
-                    writer.WriteString("baseUrl", ApiBaseUrl?.Trim() ?? "http://localhost:5000");
-                    writer.WriteString("apiKey", ApiKey?.Trim() ?? string.Empty);
-                    writer.WriteNumber("timeoutSeconds", TimeoutSeconds);
-                    writer.WriteNumber("retryCount", 3); // 기본값
-                    writer.WriteBoolean("useHttps", ApiBaseUrl?.StartsWith("https://") == true);
-                    writer.WriteEndObject();
+                    // 4. appsettings.json 파일 업데이트
+                    await SaveToAppSettingsFile(apiSettings, uiSettings);
 
-                    // 6. UiSettings 업데이트
-                    writer.WritePropertyName("UiSettings");
-                    writer.WriteStartObject();
-                    writer.WriteString("theme", "Light"); // 기본값
-                    writer.WriteString("language", "ko-KR"); // 기본값
-                    writer.WriteBoolean("showNotifications", ShowNotifications);
-                    writer.WriteBoolean("autoRefresh", IsAutoRefreshEnabled);
-                    writer.WriteNumber("refreshIntervalSeconds", 30); // 기본값
-                    writer.WriteBoolean("showAdvancedFeatures", ShowAdvancedFeatures);
-                    writer.WriteEndObject();
+                    // 5. 🔥 핵심: ApiService에 즉시 적용
+                    await ApplyRuntimeSettingsImmediate(apiSettings, uiSettings);
 
-                    writer.WriteEndObject();
-                    writer.Flush();
+                    // 6. 성공 처리
+                    StatusMessage = "설정이 저장되고 적용되었습니다.";
+                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 및 적용 완료");
 
-                    // 7. 파일 저장
-                    var updatedJson = Encoding.UTF8.GetString(stream.ToArray());
-                    await File.WriteAllTextAsync(appSettingsPath, updatedJson);
-
-                    // 8. 런타임 설정 적용
-                    await ApplyRuntimeSettings();
-
-                    // 9. 성공 처리
-                    StatusMessage = "설정이 저장되었습니다.";
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 완료");
-
-                    _logger.LogInformation("사용자 설정이 성공적으로 저장되었습니다. API URL: {ApiUrl}", ApiBaseUrl);
+                    _logger.LogInformation("사용자 설정이 성공적으로 저장되고 적용되었습니다. API URL: {ApiUrl}", apiSettings.BaseUrl);
                 }
                 catch (UnauthorizedAccessException ex)
                 {
                     StatusMessage = "설정 파일에 대한 쓰기 권한이 없습니다.";
                     _logger.LogError(ex, "설정 저장 권한 오류");
+                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 실패: 권한 오류");
                 }
                 catch (DirectoryNotFoundException ex)
                 {
@@ -627,18 +625,145 @@ namespace HarvestCraft2.TestClient.ViewModels
                 {
                     StatusMessage = "설정 파일 저장 중 I/O 오류가 발생했습니다.";
                     _logger.LogError(ex, "설정 파일 I/O 오류");
+                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 실패: I/O 오류");
                 }
                 catch (JsonException ex)
                 {
                     StatusMessage = "설정 데이터 직렬화 오류가 발생했습니다.";
                     _logger.LogError(ex, "JSON 직렬화 오류");
+                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 실패: JSON 오류");
                 }
                 catch (Exception ex)
                 {
                     StatusMessage = "설정 저장 중 예기치 않은 오류가 발생했습니다.";
                     _logger.LogError(ex, "설정 저장 중 예상치 못한 오류");
+                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 실패: {ex.Message}");
                 }
             });
+        }
+
+        /// <summary>
+        /// appsettings.json 파일에 직접 저장
+        /// </summary>
+        private async Task SaveToAppSettingsFile(ApiSettings apiSettings, UiSettings uiSettings)
+        {
+            var appSettingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
+
+            // 기존 설정 파일 읽기
+            var jsonContent = "{}";
+            if (File.Exists(appSettingsPath))
+            {
+                jsonContent = await File.ReadAllTextAsync(appSettingsPath);
+            }
+
+            // JSON 파싱 및 업데이트
+            using var document = JsonDocument.Parse(jsonContent);
+            using var stream = new MemoryStream();
+            using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+
+            writer.WriteStartObject();
+
+            // 기존 설정 복사 (ApiSettings, UiSettings 제외)
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                if (property.Name != "ApiSettings" && property.Name != "UiSettings")
+                {
+                    property.WriteTo(writer);
+                }
+            }
+
+            // ApiSettings 추가
+            writer.WritePropertyName("ApiSettings");
+            JsonSerializer.Serialize(writer, apiSettings, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+            // UiSettings 추가
+            writer.WritePropertyName("UiSettings");
+            JsonSerializer.Serialize(writer, uiSettings, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+            writer.WriteEndObject();
+            writer.Flush();
+
+            // 파일 저장
+            var updatedJson = Encoding.UTF8.GetString(stream.ToArray());
+            await File.WriteAllTextAsync(appSettingsPath, updatedJson);
+        }
+
+        /// <summary>
+        /// 런타임 설정을 즉시 적용합니다 (완전 수정된 버전)
+        /// </summary>
+        private async Task ApplyRuntimeSettingsImmediate(ApiSettings apiSettings, UiSettings uiSettings)
+        {
+            try
+            {
+                _logger.LogInformation("런타임 설정을 즉시 적용합니다...");
+
+                // 🔥 핵심: API 클라이언트 설정 업데이트 - 즉시 적용
+                if (_apiService != null)
+                {
+                    StatusMessage = "API 서비스 설정을 업데이트하는 중...";
+
+                    // 실제 ApiService 업데이트 호출
+                    await _apiService.UpdateSettingsAsync(apiSettings);
+                    _logger.LogInformation("ApiService 설정이 업데이트되었습니다.");
+
+                    // 연결 상태 표시 업데이트 (ApiService에서 자동 처리되지만 수동 동기화)
+                    IsConnected = _apiService.IsConnected;
+
+                    // 현재 설정 값들도 업데이트 (ApiService에서 변경된 값으로 동기화)
+                    var currentSettings = _apiService.GetCurrentSettings();
+                    ApiBaseUrl = currentSettings.BaseUrl;
+                    ApiKey = currentSettings.ApiKey;
+                    TimeoutSeconds = currentSettings.TimeoutSeconds;
+
+                    StatusMessage = IsConnected ?
+                        "API 설정이 적용되고 연결되었습니다." :
+                        "API 설정이 적용되었지만 서버에 연결할 수 없습니다.";
+
+                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] API 설정 적용: {apiSettings.BaseUrl}");
+                }
+
+                // UI 설정 적용
+                await ApplyUiSettingsImmediate(uiSettings);
+
+                _logger.LogInformation("모든 런타임 설정이 적용되었습니다.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "런타임 설정 적용 중 일부 오류가 발생했습니다.");
+                StatusMessage = "설정이 저장되었지만 일부 변경사항은 재시작 후 적용됩니다.";
+                RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 적용 부분 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// UI 설정을 즉시 적용합니다.
+        /// </summary>
+        private async Task ApplyUiSettingsImmediate(UiSettings uiSettings)
+        {
+            try
+            {
+                // 자동 새로고침 설정 적용
+                if (_statusTimer != null)
+                {
+                    if (uiSettings.AutoRefresh != IsAutoRefreshEnabled)
+                    {
+                        IsAutoRefreshEnabled = uiSettings.AutoRefresh;
+                        // 필요시 타이머 간격 조정 로직 추가
+                        _logger.LogInformation("자동 새로고침 설정 변경: {AutoRefresh}", IsAutoRefreshEnabled);
+                    }
+                }
+
+                // 알림 설정 적용
+                ShowNotifications = uiSettings.ShowNotifications;
+                ShowAdvancedFeatures = uiSettings.ShowAdvancedFeatures;
+
+                _logger.LogInformation("UI 설정이 적용되었습니다.");
+                await Task.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "UI 설정 적용 중 오류 발생");
+            }
         }
 
         /// <summary>
@@ -676,41 +801,6 @@ namespace HarvestCraft2.TestClient.ViewModels
         }
 
         /// <summary>
-        /// 런타임 설정 적용
-        /// </summary>
-        private async Task ApplyRuntimeSettings()
-        {
-            try
-            {
-                // API 클라이언트 설정 업데이트
-                if (_apiService != null)
-                {
-                    var apiSettings = new
-                    {
-                        BaseUrl = ApiBaseUrl,
-                        ApiKey = ApiKey,
-                        TimeoutSeconds = TimeoutSeconds
-                    };
-                    
-                    // ApiService에 UpdateSettings 메서드가 있다면 호출
-                    // await _apiService.UpdateSettingsAsync(apiSettings);
-                }
-
-                // 자동 새로고침 설정 적용
-                if (_statusTimer != null && IsAutoRefreshEnabled)
-                {
-                    // 필요시 타이머 간격 조정 로직 추가
-                }
-
-                _logger.LogInformation("런타임 설정이 적용되었습니다.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "런타임 설정 적용 중 일부 오류가 발생했습니다. 설정은 저장되었지만 즉시 적용되지 않을 수 있습니다.");
-            }
-        }
-
-        /// <summary>
         /// 설정 디렉토리 생성
         /// </summary>
         private async Task CreateSettingsDirectory()
@@ -722,7 +812,7 @@ namespace HarvestCraft2.TestClient.ViewModels
                 {
                     Directory.CreateDirectory(settingsDir);
                 }
-                
+
                 StatusMessage = "설정 디렉토리를 생성했습니다.";
                 _logger.LogInformation("설정 디렉토리를 생성했습니다: {Directory}", settingsDir);
             }
@@ -809,10 +899,60 @@ namespace HarvestCraft2.TestClient.ViewModels
 
         #endregion
 
+        #region 이벤트 핸들러
+
+        /// <summary>
+        /// ApiService 연결 상태 변경 이벤트 핸들러
+        /// </summary>
+        private void OnApiServiceConnectionChanged(object? sender, ConnectionStatusChangedEventArgs e)
+        {
+            // UI 스레드에서 실행
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                IsConnected = e.IsConnected;
+                var statusText = e.IsConnected ? "연결됨" : "연결 안됨";
+
+                if (!string.IsNullOrEmpty(e.ErrorMessage))
+                {
+                    statusText += $" ({e.ErrorMessage})";
+                }
+
+                RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 연결 상태 변경: {statusText}");
+                _logger.LogInformation("ApiService 연결 상태 변경: {IsConnected}", e.IsConnected);
+            });
+        }
+
+        /// <summary>
+        /// ApiService 설정 업데이트 이벤트 핸들러
+        /// </summary>
+        private void OnApiServiceSettingsUpdated(object? sender, SettingsUpdatedEventArgs e)
+        {
+            // UI 스레드에서 실행
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                // UI의 설정 값들을 ApiService의 현재 값으로 동기화
+                ApiBaseUrl = e.NewSettings.BaseUrl;
+                ApiKey = e.NewSettings.ApiKey;
+                TimeoutSeconds = e.NewSettings.TimeoutSeconds;
+
+                RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] API 설정 업데이트: {e.NewSettings.BaseUrl}");
+                _logger.LogInformation("ApiService 설정이 업데이트되었습니다: {BaseUrl}", e.NewSettings.BaseUrl);
+            });
+        }
+
+        #endregion
+
         #region IDisposable
 
         ~MainWindowViewModel()
         {
+            // 이벤트 구독 해제
+            if (_apiService != null)
+            {
+                _apiService.ConnectionStatusChanged -= OnApiServiceConnectionChanged;
+                _apiService.SettingsUpdated -= OnApiServiceSettingsUpdated;
+            }
+
             _statusTimer?.Stop();
             _statusTimer?.Dispose();
         }

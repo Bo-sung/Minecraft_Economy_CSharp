@@ -135,7 +135,7 @@ namespace HarvestCraft2.TestClient
                 .UseSerilog();
 
         /// <summary>
-        /// 서비스 의존성 주입 등록 (현재 미구현으로 주석처리)
+        /// 서비스 의존성 주입 등록
         /// </summary>
         private static void RegisterServices(IServiceCollection services)
         {
@@ -152,7 +152,7 @@ namespace HarvestCraft2.TestClient
         }
 
         /// <summary>
-        /// 뷰모델 의존성 주입 등록 (현재 미구현으로 주석처리)
+        /// 뷰모델 의존성 주입 등록
         /// </summary>
         private static void RegisterViewModels(IServiceCollection services)
         {
