@@ -10,11 +10,8 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- 상단 툴바 -->
             <RowDefinition Height="*"/>
-            <!-- 메인 컨텐츠 -->
             <RowDefinition Height="Auto"/>
-            <!-- 하단 상태바 -->
         </Grid.RowDefinitions>
 
         <!-- 상단 툴바 -->
@@ -38,8 +35,8 @@
 
                 <!-- 연결 상태 및 버튼 -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border x:Name="ConnectionStatus" Style="{StaticResource StatusBorder}" 
-                          Background="{Binding ConnectionColor}" Margin="0,0,16,0">
+                    <!-- 연결 상태 -->
+                    <Border x:Name="ConnectionStatus" Margin="0,0,16,0" CornerRadius="12" Padding="8,4" Background="#FFF44336">
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="8" Height="8" Fill="White" Margin="0,0,4,0"/>
                             <TextBlock Text="{Binding ConnectionStatusText}" Foreground="White" FontSize="12"/>
@@ -49,8 +46,7 @@
                     <Button x:Name="ConnectButton" Content="연결 테스트" 
                           Style="{StaticResource SecondaryButton}" 
                           Background="White" Foreground="#FF2196F3"
-                          Command="{Binding TestConnectionCommand}"
-                          IsEnabled="{Binding !IsLoading}"/>
+                          Command="{Binding TestConnectionCommand}"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -61,81 +57,117 @@
 
             <!-- 대시보드 탭 -->
             <TabItem Header="📊 대시보드" x:Name="DashboardTab">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid Margin="16">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Grid Margin="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
 
-                        <!-- 요약 카드들 -->
-                        <UniformGrid Grid.Row="0" Rows="1" Columns="4" Margin="0,0,0,16">
-                            <Border Style="{StaticResource SectionCard}">
-                                <StackPanel>
-                                    <TextBlock Text="온라인 플레이어" FontWeight="Bold" FontSize="14"/>
-                                    <TextBlock x:Name="OnlinePlayersCount" Text="{Binding OnlinePlayersCount}" FontSize="32" 
-                                             Foreground="#FF2196F3" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Style="{StaticResource SectionCard}">
-                                <StackPanel>
-                                    <TextBlock Text="활성 아이템" FontWeight="Bold" FontSize="14"/>
-                                    <TextBlock x:Name="ActiveItemsCount" Text="{Binding ActiveItemsCount}" FontSize="32" 
-                                             Foreground="#FF4CAF50" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Style="{StaticResource SectionCard}">
-                                <StackPanel>
-                                    <TextBlock Text="총 거래량" FontWeight="Bold" FontSize="14"/>
-                                    <TextBlock x:Name="TotalTradeVolume" Text="{Binding TotalTradeVolume}" FontSize="32" 
-                                             Foreground="#FFFF9800" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-
-                            <Border Style="{StaticResource SectionCard}">
-                                <StackPanel>
-                                    <TextBlock Text="시스템 상태" FontWeight="Bold" FontSize="14"/>
-                                    <TextBlock x:Name="SystemStatus" Text="{Binding SystemStatus}" FontSize="24" 
-                                             Foreground="#FF4CAF50" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                        </UniformGrid>
-
-                        <!-- 차트 영역 -->
-                        <Border Grid.Row="1" Style="{StaticResource ChartContainer}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <!-- 가격 차트 영역 -->
-                                <Border Grid.Column="0" Background="#FFF5F5F5" 
-                                      BorderBrush="LightGray" BorderThickness="1" Margin="0,0,8,0">
-                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <TextBlock Text="📈" FontSize="48" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="실시간 가격 차트" FontSize="16" FontWeight="Bold" 
-                                                 HorizontalAlignment="Center" Margin="0,8,0,0"/>
-                                        <TextBlock Text="Phase 2에서 구현 예정" FontSize="12" 
-                                                 Foreground="Gray" HorizontalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- 최근 활동 -->
-                                <Border Grid.Column="1" Style="{StaticResource SectionCard}" Margin="8,0,0,0">
+                            <!-- 요약 카드들 -->
+                            <UniformGrid Grid.Row="0" Rows="1" Columns="4" Margin="0,0,0,16">
+                                <Border Style="{StaticResource SectionCard}">
                                     <StackPanel>
-                                        <TextBlock Text="최근 활동" FontWeight="Bold" FontSize="14" Margin="0,0,0,8"/>
-                                        <ListBox x:Name="RecentActivityList" Height="200" BorderThickness="0"
-                                               ItemsSource="{Binding RecentActivities}">
-                                        </ListBox>
+                                        <TextBlock Text="온라인 플레이어" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock x:Name="OnlinePlayersCount" Text="{Binding OnlinePlayersCount}" FontSize="32" 
+                                                 Foreground="#FF2196F3" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Border>
-                            </Grid>
+
+                                <Border Style="{StaticResource SectionCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="활성 아이템" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock x:Name="ActiveItemsCount" Text="{Binding ActiveItemsCount}" FontSize="32" 
+                                                 Foreground="#FF4CAF50" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource SectionCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="총 거래량" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock x:Name="TotalTradeVolume" Text="{Binding TotalTradeVolume}" FontSize="32" 
+                                                 Foreground="#FFFF9800" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Style="{StaticResource SectionCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="시스템 상태" FontWeight="Bold" FontSize="14"/>
+                                        <TextBlock x:Name="SystemStatus" Text="{Binding SystemStatus}" FontSize="24" 
+                                                 Foreground="#FF4CAF50" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+
+                            <!-- 차트 영역 -->
+                            <Border Grid.Row="1" Style="{StaticResource ChartContainer}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 가격 차트 영역 -->
+                                    <Border Grid.Column="0" Background="#FFF5F5F5" 
+                                          BorderBrush="LightGray" BorderThickness="1" Margin="0,0,8,0">
+                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock Text="📈" FontSize="48" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="실시간 가격 차트" FontSize="16" FontWeight="Bold" 
+                                                     HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                                            <TextBlock Text="Phase 5에서 구현 예정" FontSize="12" 
+                                                     Foreground="Gray" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 최근 활동 -->
+                                    <Border Grid.Column="1" Style="{StaticResource SectionCard}" Margin="8,0,0,0">
+                                        <StackPanel>
+                                            <TextBlock Text="최근 활동" FontWeight="Bold" FontSize="14" Margin="0,0,0,8"/>
+                                            <ListBox x:Name="RecentActivityList" BorderThickness="0"
+                                                   Background="Transparent" ItemsSource="{Binding RecentActivities}" Height="427">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="#FFF8F9FA" BorderBrush="#FFE9ECEF" 
+                                                              BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,2">
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Message}" FontSize="12" 
+                                                                         FontWeight="Medium" TextWrapping="Wrap"/>
+                                                                <TextBlock Text="{Binding Timestamp, StringFormat=HH:mm:ss}" 
+                                                                         FontSize="10" Foreground="Gray" Margin="0,2,0,0"/>
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
+
+                    <!-- 로딩 오버레이 - DataTrigger 사용 -->
+                    <Grid x:Name="LoadingOverlay" Background="#80000000">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Border Background="White" CornerRadius="8" Padding="24" 
+                              HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <ProgressBar IsIndeterminate="True" Width="24" Height="24" Margin="0,0,12,0"/>
+                                <TextBlock Text="{Binding LoadingMessage}" VerticalAlignment="Center" FontSize="14"/>
+                            </StackPanel>
                         </Border>
                     </Grid>
-                </ScrollViewer>
+                </Grid>
             </TabItem>
 
             <!-- 상점 테스트 탭 -->
@@ -183,7 +215,8 @@
                             <TextBlock Text="거래 결과" FontWeight="Bold" FontSize="16" Margin="0,0,0,16"/>
                             <TextBox x:Name="TradeResultTextBox" Height="200" TextWrapping="Wrap" 
                                    AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
-                                   Text="{Binding TradeResultText}"/>
+                                   Text="{Binding TradeResultText}" FontFamily="Consolas" FontSize="11"
+                                   Background="#FFF8F9FA" BorderBrush="#FFE9ECEF"/>
 
                             <Button Content="결과 지우기" Style="{StaticResource SecondaryButton}" 
                                   Margin="0,8,0,0" Command="{Binding ClearResultCommand}"/>
@@ -211,8 +244,7 @@
                             </ComboBox>
 
                             <Button Content="새로고침" Style="{StaticResource PrimaryButton}" 
-                                  Command="{Binding RefreshPricesCommand}"
-                                  IsEnabled="{Binding !IsLoading}"/>
+                                  Command="{Binding RefreshPricesCommand}"/>
                         </StackPanel>
                     </Border>
 
@@ -247,16 +279,26 @@
 
                             <ListBox x:Name="PlayersListBox" Height="300" 
                                    ItemsSource="{Binding Players}"
-                                   SelectedItem="{Binding SelectedPlayer}"
-                                   DisplayMemberPath="PlayerName">
+                                   SelectedItem="{Binding SelectedPlayer}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="White" BorderBrush="#FFE0E0E0" 
+                                              BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,2">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding PlayerName}" FontWeight="Bold" FontSize="13"/>
+                                                <TextBlock Text="{Binding PlayerId}" FontSize="11" Foreground="Gray"/>
+                                                <TextBlock Text="{Binding Balance, StringFormat='잔액: {0:C} Gold'}" 
+                                                         FontSize="11" Foreground="#FF4CAF50" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
                             </ListBox>
 
-                            <!-- 플레이어 관리 탭의 삭제 버튼 수정 -->
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                                 <Button Content="추가"
                                         Style="{StaticResource PrimaryButton}" 
                                         Command="{Binding CreateTestPlayerCommand}"
-                                        IsEnabled="{Binding !IsLoading}"
                                         Margin="0,0,4,0"/>
                                 <Button Content="삭제" Style="{StaticResource SecondaryButton}" 
                                         Command="{Binding RemovePlayerCommand}"
@@ -341,11 +383,20 @@
                             <StackPanel>
                                 <TextBlock Text="UI 설정" FontWeight="Bold" FontSize="16" Margin="0,0,0,16"/>
 
-                                <CheckBox x:Name="AutoRefreshCheckBox" Content="자동 새로고침 (30초)" 
+                                <CheckBox x:Name="AutoRefreshCheckBox" Content="자동 새로고침 활성화" 
                                         IsChecked="{Binding IsAutoRefreshEnabled}" Margin="0,0,0,8"/>
 
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <TextBlock Text="새로고침 간격 (초):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Slider x:Name="RefreshIntervalSlider" Width="150" Minimum="5" Maximum="60" 
+                                          Value="30" TickFrequency="5" IsSnapToTickEnabled="True"
+                                          VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="30초" 
+                                             VerticalAlignment="Center" FontWeight="Bold"/>
+                                </StackPanel>
+
                                 <CheckBox x:Name="ShowNotificationsCheckBox" Content="알림 표시" 
-                                        IsChecked="{Binding ShowNotifications}" Margin="0,0,0,8"/>
+                                        IsChecked="{Binding ShowNotifications}" Margin="0,8,0,8"/>
 
                                 <CheckBox x:Name="ShowAdvancedFeaturesCheckBox" Content="고급 기능 표시" 
                                         IsChecked="{Binding ShowAdvancedFeatures}"/>
