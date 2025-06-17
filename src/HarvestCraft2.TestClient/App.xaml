@@ -1,6 +1,8 @@
 ﻿<Application x:Class="HarvestCraft2.TestClient.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:utils="clr-namespace:HarvestCraft2.TestClient.Utils"
+             xmlns:converters="clr-namespace:HarvestCraft2.TestClient.Converters">
     <Application.Resources>
         <!-- 기본 색상 -->
         <SolidColorBrush x:Key="PrimaryColor" Color="#2196F3"/>
@@ -15,7 +17,7 @@
             <Setter Property="Background" Value="#FFF8F9FA"/>
         </Style>
 
-        <!-- 버튼 스타일들 (명시적 Key 지정) -->
+        <!-- 버튼 스타일들 (기존 유지) -->
         <Style x:Key="PrimaryButton" TargetType="Button">
             <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
             <Setter Property="Foreground" Value="White"/>
@@ -83,6 +85,10 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Material Design 호환 스타일들 (PriceView용) -->
+        <Style x:Key="MaterialDesignRaisedButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}"/>
+        <Style x:Key="MaterialDesignOutlinedButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}"/>
 
         <!-- 텍스트박스 스타일 -->
         <Style x:Key="MainTextBox" TargetType="TextBox">
@@ -166,5 +172,19 @@
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="16"/>
         </Style>
+
+        <!-- 컨버터들 (기존 Utils 네임스페이스) -->
+        <utils:BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <utils:ConnectionStatusToColorConverter x:Key="ConnectionStatusToColorConverter"/>
+        <utils:PriceChangeToColorConverter x:Key="PriceDirectionToColorConverter"/>
+        <utils:NumberFormatConverter x:Key="DecimalToCurrencyConverter"/>
+        <utils:RelativeTimeConverter x:Key="DateTimeToTimeStringConverter"/>
+
+        <!-- 컨버터들 (기존 Converters 네임스페이스) -->
+        <converters:BoolToStatusColorConverter x:Key="BoolToStatusColorConverter"/>
+        <converters:StatusToColorConverter x:Key="StatusToColorConverter"/>
+        <converters:LoadingToOpacityConverter x:Key="LoadingToOpacityConverter"/>
+        <converters:PriceChangeCalculatorConverter x:Key="PriceChangeCalculatorConverter"/>
+
     </Application.Resources>
 </Application>

@@ -1,4 +1,8 @@
-﻿using System;
+﻿// ============================================================================
+// ViewModels/MainWindowViewModel.cs - 메인 윈도우 뷰모델 (완전판)
+// ============================================================================
+
+using System;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -17,9 +21,9 @@ namespace HarvestCraft2.TestClient.ViewModels
 {
     /// <summary>
     /// 메인 윈도우의 ViewModel
-    /// 기존 MainWindow.xaml 구조에 맞게 구현
+    /// 실시간 차트 및 시스템 상태 관리 포함
     /// </summary>
-    public class MainWindowViewModel : ViewModelBase
+    public class MainWindowViewModel : ViewModelBase, IDisposable
     {
         #region 필드
 
@@ -27,19 +31,28 @@ namespace HarvestCraft2.TestClient.ViewModels
         private readonly ILogger<MainWindowViewModel> _logger;
         private readonly IApiService _apiService;
         private readonly IPlayerService _playerService;
+        private readonly IChartService _chartService;
         private System.Timers.Timer? _statusTimer;
 
         #endregion
 
         #region 생성자
 
-        public MainWindowViewModel(IConfiguration configuration, ILogger<MainWindowViewModel> logger,
-            IApiService apiService, IPlayerService playerService)
+        public MainWindowViewModel(
+            IConfiguration configuration,
+            ILogger<MainWindowViewModel> logger,
+            IApiService apiService,
+            IPlayerService playerService,
+            IChartService chartService)
         {
-            _configuration = configuration;
-            _logger = logger;
-            _apiService = apiService;
-            _playerService = playerService;
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _apiService = apiService ?? throw new ArgumentNullException(nameof(apiService));
+            _playerService = playerService ?? throw new ArgumentNullException(nameof(playerService));
+            _chartService = chartService ?? throw new ArgumentNullException(nameof(chartService));
+
+            // PriceViewModel 초기화
+            PriceViewModel = new PriceViewModel(apiService, chartService, logger.CreateLogger<PriceViewModel>());
 
             InitializeCommands();
             InitializeTimer();
@@ -48,13 +61,22 @@ namespace HarvestCraft2.TestClient.ViewModels
 
             // ApiService 이벤트 구독
             SubscribeToApiServiceEvents();
+
+            _logger.LogInformation("MainWindowViewModel 초기화 완료");
         }
 
         #endregion
 
-        #region 속성
+        #region 뷰모델 속성
 
-        #region 연결 상태
+        /// <summary>
+        /// 가격 모니터링 뷰모델
+        /// </summary>
+        public PriceViewModel PriceViewModel { get; }
+
+        #endregion
+
+        #region 연결 상태 속성
 
         private bool _isConnected;
         public bool IsConnected
@@ -65,134 +87,88 @@ namespace HarvestCraft2.TestClient.ViewModels
                 SetProperty(ref _isConnected, value);
                 ConnectionStatusText = value ? "연결됨" : "연결 안됨";
                 ConnectionColor = value ? "#4CAF50" : "#F44336";
+                OnPropertyChanged(nameof(ConnectionStatusText));
+                OnPropertyChanged(nameof(ConnectionColor));
             }
         }
 
-        private string _connectionStatusText = "연결 안됨";
+        private string _connectionStatusText = "연결 확인 중";
         public string ConnectionStatusText
         {
             get => _connectionStatusText;
             set => SetProperty(ref _connectionStatusText, value);
         }
 
-        private string _connectionColor = "#F44336";
+        private string _connectionColor = "#FFC107";
         public string ConnectionColor
         {
             get => _connectionColor;
             set => SetProperty(ref _connectionColor, value);
         }
 
-        private string _serverUrl = "localhost:7001";
-        public string ServerUrl
+        private string _apiEndpoint = string.Empty;
+        public string ApiEndpoint
         {
-            get => _serverUrl;
-            set => SetProperty(ref _serverUrl, value);
+            get => _apiEndpoint;
+            set => SetProperty(ref _apiEndpoint, value);
         }
 
-        private string _apiVersion = "v1.0";
+        private string _apiVersion = string.Empty;
         public string ApiVersion
         {
             get => _apiVersion;
             set => SetProperty(ref _apiVersion, value);
         }
 
-        #endregion
-
-        #region 탭 관리
-
-        private int _selectedTabIndex;
-        public int SelectedTabIndex
+        private TimeSpan _responseTime;
+        public TimeSpan ResponseTime
         {
-            get => _selectedTabIndex;
-            set
-            {
-                SetProperty(ref _selectedTabIndex, value);
-                OnTabChanged();
-            }
+            get => _responseTime;
+            set => SetProperty(ref _responseTime, value);
         }
 
         #endregion
 
-        #region 상태바
+        #region 시스템 상태 속성
 
-        private string _progressText = "Phase 4: 설정 연동 완료 (100%)";
-        public string ProgressText
-        {
-            get => _progressText;
-            set => SetProperty(ref _progressText, value);
-        }
-
-        private string _currentTime = DateTime.Now.ToString("HH:mm:ss");
-        public string CurrentTime
-        {
-            get => _currentTime;
-            set => SetProperty(ref _currentTime, value);
-        }
-
-        #endregion
-
-        #region 대시보드 데이터
-
-        private int _totalItems = 120;
-        public int TotalItems
-        {
-            get => _totalItems;
-            set => SetProperty(ref _totalItems, value);
-        }
-
-        private int _onlinePlayersCount = 5;
-        public int OnlinePlayersCount
-        {
-            get => _onlinePlayersCount;
-            set => SetProperty(ref _onlinePlayersCount, value);
-        }
-
-        private int _activeItemsCount = 24;
-        public int ActiveItemsCount
-        {
-            get => _activeItemsCount;
-            set => SetProperty(ref _activeItemsCount, value);
-        }
-
-        private decimal _totalTradeVolume = 15420.50m;
-        public decimal TotalTradeVolume
-        {
-            get => _totalTradeVolume;
-            set => SetProperty(ref _totalTradeVolume, value);
-        }
-
-        private string _systemStatus = "정상";
+        private string _systemStatus = "시스템 준비";
         public string SystemStatus
         {
             get => _systemStatus;
             set => SetProperty(ref _systemStatus, value);
         }
 
-        #endregion
-
-        #region 플레이어 관리
-
-        private PlayerResponse? _selectedPlayer;
-        public PlayerResponse? SelectedPlayer
+        private int _onlinePlayersCount;
+        public int OnlinePlayersCount
         {
-            get => _selectedPlayer;
-            set
-            {
-                SetProperty(ref _selectedPlayer, value);
-                OnPropertyChanged(nameof(CanRemovePlayer));
-
-                if (value != null)
-                {
-                    _ = Task.Run(async () => await LoadPlayerTransactionsAsync(value.PlayerId));
-                }
-            }
+            get => _onlinePlayersCount;
+            set => SetProperty(ref _onlinePlayersCount, value);
         }
 
-        public bool CanRemovePlayer => SelectedPlayer != null && !IsBusy;
+        private int _totalItemsCount;
+        public int TotalItemsCount
+        {
+            get => _totalItemsCount;
+            set => SetProperty(ref _totalItemsCount, value);
+        }
+
+        private decimal _totalTransactionVolume;
+        public decimal TotalTransactionVolume
+        {
+            get => _totalTransactionVolume;
+            set => SetProperty(ref _totalTransactionVolume, value);
+        }
+
+        private DateTime _lastDataUpdate = DateTime.Now;
+        public DateTime LastDataUpdate
+        {
+            get => _lastDataUpdate;
+            set => SetProperty(ref _lastDataUpdate, value);
+        }
 
         #endregion
 
-        #region 상점 테스트
+        #region 플레이어 관리 속성
 
         private string _selectedPlayerId = string.Empty;
         public string SelectedPlayerId
@@ -201,760 +177,483 @@ namespace HarvestCraft2.TestClient.ViewModels
             set => SetProperty(ref _selectedPlayerId, value);
         }
 
-        private string _selectedItemId = string.Empty;
-        public string SelectedItemId
+        private string _selectedPlayerName = string.Empty;
+        public string SelectedPlayerName
         {
-            get => _selectedItemId;
-            set => SetProperty(ref _selectedItemId, value);
+            get => _selectedPlayerName;
+            set => SetProperty(ref _selectedPlayerName, value);
         }
 
-        private int _quantity = 1;
-        public int Quantity
+        private decimal _selectedPlayerBalance;
+        public decimal SelectedPlayerBalance
         {
-            get => _quantity;
-            set => SetProperty(ref _quantity, value);
+            get => _selectedPlayerBalance;
+            set => SetProperty(ref _selectedPlayerBalance, value);
         }
 
-        private string _tradeResultText = "거래 테스트 결과가 여기에 표시됩니다.";
-        public string TradeResultText
+        private string _newPlayerName = string.Empty;
+        public string NewPlayerName
         {
-            get => _tradeResultText;
-            set => SetProperty(ref _tradeResultText, value);
+            get => _newPlayerName;
+            set => SetProperty(ref _newPlayerName, value);
         }
 
-        public bool CanExecuteTransaction => !IsBusy &&
-                                           !string.IsNullOrEmpty(SelectedPlayerId) &&
-                                           !string.IsNullOrEmpty(SelectedItemId) &&
-                                           Quantity > 0;
-
-        #endregion
-
-        #region 설정
-
-        private string _apiBaseUrl = "http://localhost:5000";
-        public string ApiBaseUrl
+        private decimal _newPlayerBalance = 10000;
+        public decimal NewPlayerBalance
         {
-            get => _apiBaseUrl;
-            set => SetProperty(ref _apiBaseUrl, value);
-        }
-
-        private string _apiKey = "your-api-key-here";
-        public string ApiKey
-        {
-            get => _apiKey;
-            set => SetProperty(ref _apiKey, value);
-        }
-
-        private int _timeoutSeconds = 30;
-        public int TimeoutSeconds
-        {
-            get => _timeoutSeconds;
-            set => SetProperty(ref _timeoutSeconds, value);
-        }
-
-        private bool _isAutoRefreshEnabled = true;
-        public bool IsAutoRefreshEnabled
-        {
-            get => _isAutoRefreshEnabled;
-            set => SetProperty(ref _isAutoRefreshEnabled, value);
-        }
-
-        private bool _showNotifications = true;
-        public bool ShowNotifications
-        {
-            get => _showNotifications;
-            set => SetProperty(ref _showNotifications, value);
-        }
-
-        private bool _showAdvancedFeatures = false;
-        public bool ShowAdvancedFeatures
-        {
-            get => _showAdvancedFeatures;
-            set => SetProperty(ref _showAdvancedFeatures, value);
+            get => _newPlayerBalance;
+            set => SetProperty(ref _newPlayerBalance, value);
         }
 
         #endregion
 
-        #endregion
+        #region 컬렉션들
 
-        #region 컬렉션
-
-        public ObservableCollection<PlayerResponse> Players { get; } = new();
-        public ObservableCollection<TransactionResponse> PlayerTransactions { get; } = new();
-        public ObservableCollection<PriceResponse> PricesList { get; } = new();
+        public ObservableCollection<PlayerInfoResponse> AllPlayers { get; } = new();
         public ObservableCollection<string> RecentActivities { get; } = new();
-        public ObservableCollection<string> AvailableItems { get; } = new();
-        public ObservableCollection<string> PriceFilterOptions { get; } = new();
-
-        private string _selectedPriceFilter = "전체";
-        public string SelectedPriceFilter
-        {
-            get => _selectedPriceFilter;
-            set => SetProperty(ref _selectedPriceFilter, value);
-        }
+        public ObservableCollection<SystemMetric> SystemMetrics { get; } = new();
 
         #endregion
 
-        #region 명령어
+        #region 명령어들
 
         public ICommand TestConnectionCommand { get; private set; } = null!;
-        public ICommand RefreshCommand { get; private set; } = null!;
-        public ICommand CreateTestPlayerCommand { get; private set; } = null!;
-        public ICommand RemovePlayerCommand { get; private set; } = null!;
-        public ICommand PurchaseItemCommand { get; private set; } = null!;
-        public ICommand SellItemCommand { get; private set; } = null!;
-        public ICommand ClearResultCommand { get; private set; } = null!;
-        public ICommand RefreshPricesCommand { get; private set; } = null!;
-        public ICommand SaveSettingsCommand { get; private set; } = null!;
+        public ICommand RefreshDataCommand { get; private set; } = null!;
+        public ICommand CreatePlayerCommand { get; private set; } = null!;
+        public ICommand DeletePlayerCommand { get; private set; } = null!;
+        public ICommand LoadPlayersCommand { get; private set; } = null!;
+        public ICommand ClearActivitiesCommand { get; private set; } = null!;
+        public ICommand ExportLogsCommand { get; private set; } = null!;
 
         #endregion
 
-        #region 초기화
+        #region 초기화 메서드들
 
         private void InitializeCommands()
         {
-            TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync, () => !IsBusy);
-            RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsBusy);
-            CreateTestPlayerCommand = new AsyncRelayCommand(CreateTestPlayerAsync, () => !IsBusy);
-            RemovePlayerCommand = new AsyncRelayCommand(RemovePlayerAsync, () => CanRemovePlayer);
-            PurchaseItemCommand = new AsyncRelayCommand(PurchaseItemAsync, () => CanExecuteTransaction);
-            SellItemCommand = new AsyncRelayCommand(SellItemAsync, () => CanExecuteTransaction);
-            ClearResultCommand = new RelayCommand(ClearResult);
-            RefreshPricesCommand = new AsyncRelayCommand(RefreshPricesAsync, () => !IsBusy);
-            SaveSettingsCommand = new AsyncRelayCommand(SaveSettingsAsync);
+            TestConnectionCommand = new RelayCommand(async () => await TestConnectionAsync());
+            RefreshDataCommand = new RelayCommand(async () => await RefreshAllDataAsync());
+            CreatePlayerCommand = new RelayCommand(async () => await CreatePlayerAsync(),
+                () => !string.IsNullOrWhiteSpace(NewPlayerName) && NewPlayerBalance > 0);
+            DeletePlayerCommand = new RelayCommand(async () => await DeletePlayerAsync(),
+                () => !string.IsNullOrEmpty(SelectedPlayerId));
+            LoadPlayersCommand = new RelayCommand(async () => await LoadPlayersAsync());
+            ClearActivitiesCommand = new RelayCommand(ClearActivities);
+            ExportLogsCommand = new RelayCommand(async () => await ExportLogsAsync());
         }
 
         private void InitializeTimer()
         {
-            _statusTimer = new System.Timers.Timer(1000); // 1초마다
-            _statusTimer.Elapsed += (s, e) => CurrentTime = DateTime.Now.ToString("HH:mm:ss");
+            _statusTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30).TotalMilliseconds);
+            _statusTimer.Elapsed += async (sender, e) => await UpdateSystemStatusAsync();
+            _statusTimer.AutoReset = true;
             _statusTimer.Start();
         }
 
         private void InitializeCollections()
         {
-            // 최근 활동 초기화
-            RecentActivities.Add("시스템 시작됨");
-            RecentActivities.Add("API 연결 대기 중...");
-            RecentActivities.Add("데이터 로딩 준비");
-
-            // 사용 가능한 아이템 목록
-            AvailableItems.Add("minecraft:apple");
-            AvailableItems.Add("minecraft:bread");
-            AvailableItems.Add("minecraft:carrot");
-            AvailableItems.Add("minecraft:potato");
-            AvailableItems.Add("minecraft:wheat");
-
-            // 가격 필터 옵션
-            PriceFilterOptions.Add("전체");
-            PriceFilterOptions.Add("식품");
-            PriceFilterOptions.Add("재료");
-            PriceFilterOptions.Add("도구");
+            RecentActivities.Add($"{DateTime.Now:HH:mm:ss} - 애플리케이션 시작됨");
+            RecentActivities.Add($"{DateTime.Now:HH:mm:ss} - API 연결 확인 중...");
         }
 
         private void LoadConfiguration()
         {
             try
             {
-                var apiSettings = _configuration.GetSection("ApiSettings");
-                ApiBaseUrl = apiSettings.GetValue<string>("BaseUrl") ?? "http://localhost:5000";
-                ApiKey = apiSettings.GetValue<string>("ApiKey") ?? string.Empty;
-                TimeoutSeconds = apiSettings.GetValue<int>("TimeoutSeconds", 30);
+                ApiEndpoint = _configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5000";
+                ApiVersion = _configuration["ApiSettings:Version"] ?? "v1.0";
 
-                var uiSettings = _configuration.GetSection("UiSettings");
-                IsAutoRefreshEnabled = uiSettings.GetValue<bool>("AutoRefresh", true);
-                ShowNotifications = uiSettings.GetValue<bool>("ShowNotifications", true);
-                ShowAdvancedFeatures = uiSettings.GetValue<bool>("ShowAdvancedFeatures", false);
-
-                StatusMessage = "설정을 로드했습니다.";
-                _logger.LogInformation("MainWindow 설정이 로드되었습니다.");
+                AddActivity("설정 로드 완료");
+                _logger.LogDebug("설정 로드: Endpoint={Endpoint}, Version={Version}", ApiEndpoint, ApiVersion);
             }
             catch (Exception ex)
             {
-                StatusMessage = $"설정 로드 실패: {ex.Message}";
-                _logger.LogError(ex, "설정 로드 중 오류가 발생했습니다.");
+                _logger.LogError(ex, "설정 로드 실패");
+                AddActivity("설정 로드 실패");
             }
         }
 
-        /// <summary>
-        /// ApiService 이벤트 구독
-        /// </summary>
         private void SubscribeToApiServiceEvents()
         {
-            if (_apiService != null)
+            try
             {
-                // 연결 상태 변경 이벤트 구독
-                _apiService.ConnectionStatusChanged += OnApiServiceConnectionChanged;
+                if (_apiService != null)
+                {
+                    _apiService.ConnectionStatusChanged += OnConnectionStatusChanged;
+                    _apiService.DataUpdated += OnDataUpdated;
+                }
 
-                // 설정 업데이트 이벤트 구독
-                _apiService.SettingsUpdated += OnApiServiceSettingsUpdated;
-
-                // 초기 연결 상태 동기화
-                IsConnected = _apiService.IsConnected;
+                _logger.LogDebug("API 이벤트 구독 완료");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "API 이벤트 구독 실패");
             }
         }
 
         #endregion
 
-        #region 메서드
+        #region 명령어 구현들
 
         private async Task TestConnectionAsync()
         {
             await ExecuteAsync(async () =>
             {
-                StatusMessage = "서버에 연결 중...";
-                _logger.LogInformation("API 서버 연결을 시도합니다: {ServerUrl}", ApiBaseUrl);
+                StatusMessage = "연결 테스트 중...";
+                AddActivity("API 연결 테스트 시작");
 
-                var result = await _apiService.TestConnectionAsync();
-                IsConnected = result;
+                var startTime = DateTime.Now;
 
-                if (IsConnected)
+                try
                 {
-                    StatusMessage = "서버에 연결되었습니다.";
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 서버 연결 성공");
-                    await RefreshDashboardData();
-                }
-                else
-                {
-                    StatusMessage = "서버 연결에 실패했습니다.";
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 서버 연결 실패");
-                }
+                    var result = await _apiService.TestConnectionAsync();
+                    ResponseTime = DateTime.Now - startTime;
 
-                _logger.LogInformation("연결 상태가 변경되었습니다: {IsConnected}", IsConnected);
+                    IsConnected = result;
+                    SystemStatus = result ? "시스템 정상" : "연결 실패";
+
+                    var message = result ? "연결 성공" : "연결 실패";
+                    StatusMessage = $"{message} (응답시간: {ResponseTime.TotalMilliseconds:F0}ms)";
+                    AddActivity($"API 연결 테스트: {message}");
+
+                    _logger.LogInformation("연결 테스트 결과: {Result}, 응답시간: {ResponseTime}ms",
+                        result, ResponseTime.TotalMilliseconds);
+                }
+                catch (Exception ex)
+                {
+                    IsConnected = false;
+                    SystemStatus = "연결 오류";
+                    StatusMessage = $"연결 테스트 실패: {ex.Message}";
+                    AddActivity($"연결 테스트 오류: {ex.Message}");
+
+                    _logger.LogError(ex, "연결 테스트 실패");
+                }
             });
         }
 
-        private async Task RefreshAsync()
+        private async Task RefreshAllDataAsync()
         {
             await ExecuteAsync(async () =>
             {
-                StatusMessage = "데이터를 새로고침하는 중...";
-                _logger.LogInformation("데이터 새로고침을 시작합니다.");
+                StatusMessage = "데이터 새로고침 중...";
+                AddActivity("전체 데이터 새로고침 시작");
 
-                await RefreshDashboardData();
-                await LoadPlayersAsync();
-                await RefreshPricesAsync();
-
-                StatusMessage = $"데이터 새로고침 완료 - {DateTime.Now:HH:mm:ss}";
-                RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 데이터 새로고침 완료");
-                _logger.LogInformation("데이터 새로고침이 완료되었습니다.");
-            });
-        }
-
-        private async Task CreateTestPlayerAsync()
-        {
-            await ExecuteAsync(async () =>
-            {
-                var playerName = $"TestPlayer_{DateTime.Now:HHmmss}";
-                StatusMessage = "테스트 플레이어 생성 중...";
-
-                var response = await _apiService.CreatePlayerAsync(playerName, 1000m);
-                if (response != null)
+                try
                 {
+                    // 시스템 상태 업데이트
+                    await UpdateSystemStatusAsync();
+
+                    // 플레이어 정보 새로고침
                     await LoadPlayersAsync();
-                    SelectedPlayer = response;
-                    StatusMessage = $"테스트 플레이어 생성 완료: {playerName}";
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 플레이어 생성: {playerName}");
-                }
-                else
-                {
-                    StatusMessage = "플레이어 생성에 실패했습니다.";
-                }
-            });
-        }
 
-        private async Task RemovePlayerAsync()
-        {
-            if (SelectedPlayer == null) return;
+                    // 가격 데이터 새로고침 (PriceViewModel 통해)
+                    await PriceViewModel.LoadAllPricesCommand.ExecuteAsync(null);
 
-            await ExecuteAsync(async () =>
-            {
-                StatusMessage = "플레이어 삭제 중...";
-                var playerName = SelectedPlayer.PlayerName;
+                    LastDataUpdate = DateTime.Now;
+                    StatusMessage = "데이터 새로고침 완료";
+                    AddActivity("전체 데이터 새로고침 완료");
 
-                Players.Remove(SelectedPlayer);
-                SelectedPlayer = null;
-
-                StatusMessage = $"플레이어가 삭제되었습니다: {playerName}";
-                RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 플레이어 삭제: {playerName}");
-                await Task.CompletedTask;
-            });
-        }
-
-        private async Task PurchaseItemAsync()
-        {
-            await ExecuteAsync(async () =>
-            {
-                StatusMessage = "구매 처리 중...";
-
-                var response = await _apiService.PurchaseItemAsync(SelectedPlayerId, SelectedItemId, Quantity);
-                if (response?.Success == true)
-                {
-                    TradeResultText += $"\n[{DateTime.Now:HH:mm:ss}] 구매 성공: {SelectedItemId} x{Quantity} = {response.TotalCost:C}";
-                    StatusMessage = "구매가 완료되었습니다.";
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 구매: {SelectedItemId} x{Quantity}");
-                }
-                else
-                {
-                    TradeResultText += $"\n[{DateTime.Now:HH:mm:ss}] 구매 실패: {response?.ErrorMessage ?? "알 수 없는 오류"}";
-                    StatusMessage = "구매에 실패했습니다.";
-                }
-            });
-        }
-
-        private async Task SellItemAsync()
-        {
-            await ExecuteAsync(async () =>
-            {
-                StatusMessage = "판매 처리 중...";
-
-                var response = await _apiService.SellItemAsync(SelectedPlayerId, SelectedItemId, Quantity);
-                if (response?.Success == true)
-                {
-                    TradeResultText += $"\n[{DateTime.Now:HH:mm:ss}] 판매 성공: {SelectedItemId} x{Quantity} = {response.TotalEarned:C}";
-                    StatusMessage = "판매가 완료되었습니다.";
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 판매: {SelectedItemId} x{Quantity}");
-                }
-                else
-                {
-                    TradeResultText += $"\n[{DateTime.Now:HH:mm:ss}] 판매 실패: {response?.ErrorMessage ?? "알 수 없는 오류"}";
-                    StatusMessage = "판매에 실패했습니다.";
-                }
-            });
-        }
-
-        private void ClearResult()
-        {
-            TradeResultText = "거래 테스트 결과가 여기에 표시됩니다.";
-            StatusMessage = "거래 결과가 지워졌습니다.";
-        }
-
-        private async Task RefreshPricesAsync()
-        {
-            await ExecuteAsync(async () =>
-            {
-                StatusMessage = "가격 정보를 새로고침하는 중...";
-
-                try
-                {
-                    PricesList.Clear();
-                    foreach (var itemId in AvailableItems)
-                    {
-                        var price = await _apiService.GetItemPriceAsync(itemId);
-                        if (price != null)
-                        {
-                            PricesList.Add(price);
-                        }
-                    }
-
-                    StatusMessage = $"가격 정보 새로고침 완료: {PricesList.Count}개 아이템";
+                    _logger.LogInformation("전체 데이터 새로고침 완료");
                 }
                 catch (Exception ex)
                 {
-                    StatusMessage = $"가격 정보 새로고침 실패: {ex.Message}";
+                    StatusMessage = $"데이터 새로고침 실패: {ex.Message}";
+                    AddActivity($"데이터 새로고침 오류: {ex.Message}");
+
+                    _logger.LogError(ex, "데이터 새로고침 실패");
                 }
             });
         }
 
-        /// <summary>
-        /// 설정 저장 (완전 수정됨)
-        /// </summary>
-        private async Task SaveSettingsAsync()
+        private async Task CreatePlayerAsync()
         {
             await ExecuteAsync(async () =>
             {
+                StatusMessage = $"플레이어 생성 중: {NewPlayerName}";
+
                 try
                 {
-                    StatusMessage = "설정을 저장하는 중...";
-
-                    // 1. 설정 유효성 검증
-                    if (!ValidateSettings())
+                    var request = new CreatePlayerRequest
                     {
-                        StatusMessage = "설정 검증에 실패했습니다.";
-                        return;
+                        PlayerName = NewPlayerName,
+                        InitialBalance = NewPlayerBalance
+                    };
+
+                    var result = await _apiService.CreatePlayerAsync(request);
+
+                    if (result != null)
+                    {
+                        await LoadPlayersAsync();
+                        StatusMessage = $"플레이어 생성 완료: {result.PlayerName}";
+                        AddActivity($"새 플레이어 생성: {result.PlayerName} (잔액: {result.Balance:C})");
+
+                        // 입력 필드 초기화
+                        NewPlayerName = string.Empty;
+                        NewPlayerBalance = 10000;
+
+                        _logger.LogInformation("플레이어 생성 완료: {PlayerName}, {Balance}",
+                            result.PlayerName, result.Balance);
                     }
-
-                    // 2. API 설정 객체 생성
-                    var apiSettings = new ApiSettings
-                    {
-                        BaseUrl = ApiBaseUrl?.Trim() ?? "http://localhost:5000",
-                        ApiKey = ApiKey?.Trim() ?? string.Empty,
-                        TimeoutSeconds = TimeoutSeconds,
-                        RetryCount = 3,
-                        UseHttps = ApiBaseUrl?.StartsWith("https://") == true
-                    };
-
-                    // 3. UI 설정 객체 생성
-                    var uiSettings = new UiSettings
-                    {
-                        Theme = "Light",
-                        Language = "ko-KR",
-                        ShowNotifications = ShowNotifications,
-                        AutoRefresh = IsAutoRefreshEnabled,
-                        RefreshIntervalSeconds = 30,
-                        ShowAdvancedFeatures = ShowAdvancedFeatures
-                    };
-
-                    // 4. appsettings.json 파일 업데이트
-                    await SaveToAppSettingsFile(apiSettings, uiSettings);
-
-                    // 5. 🔥 핵심: ApiService에 즉시 적용
-                    await ApplyRuntimeSettingsImmediate(apiSettings, uiSettings);
-
-                    // 6. 성공 처리
-                    StatusMessage = "설정이 저장되고 적용되었습니다.";
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 및 적용 완료");
-
-                    _logger.LogInformation("사용자 설정이 성공적으로 저장되고 적용되었습니다. API URL: {ApiUrl}", apiSettings.BaseUrl);
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    StatusMessage = "설정 파일에 대한 쓰기 권한이 없습니다.";
-                    _logger.LogError(ex, "설정 저장 권한 오류");
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 실패: 권한 오류");
-                }
-                catch (DirectoryNotFoundException ex)
-                {
-                    StatusMessage = "설정 디렉토리를 찾을 수 없습니다.";
-                    _logger.LogError(ex, "설정 디렉토리 오류");
-                    await CreateSettingsDirectory();
-                    // 재시도
-                    await SaveSettingsAsync();
-                }
-                catch (IOException ex)
-                {
-                    StatusMessage = "설정 파일 저장 중 I/O 오류가 발생했습니다.";
-                    _logger.LogError(ex, "설정 파일 I/O 오류");
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 실패: I/O 오류");
-                }
-                catch (JsonException ex)
-                {
-                    StatusMessage = "설정 데이터 직렬화 오류가 발생했습니다.";
-                    _logger.LogError(ex, "JSON 직렬화 오류");
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 실패: JSON 오류");
                 }
                 catch (Exception ex)
                 {
-                    StatusMessage = "설정 저장 중 예기치 않은 오류가 발생했습니다.";
-                    _logger.LogError(ex, "설정 저장 중 예상치 못한 오류");
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 저장 실패: {ex.Message}");
+                    StatusMessage = $"플레이어 생성 실패: {ex.Message}";
+                    AddActivity($"플레이어 생성 오류: {ex.Message}");
+
+                    _logger.LogError(ex, "플레이어 생성 실패: {PlayerName}", NewPlayerName);
                 }
             });
         }
 
-        /// <summary>
-        /// appsettings.json 파일에 직접 저장
-        /// </summary>
-        private async Task SaveToAppSettingsFile(ApiSettings apiSettings, UiSettings uiSettings)
+        private async Task DeletePlayerAsync()
         {
-            var appSettingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
-
-            // 기존 설정 파일 읽기
-            var jsonContent = "{}";
-            if (File.Exists(appSettingsPath))
+            await ExecuteAsync(async () =>
             {
-                jsonContent = await File.ReadAllTextAsync(appSettingsPath);
-            }
+                if (string.IsNullOrEmpty(SelectedPlayerId)) return;
 
-            // JSON 파싱 및 업데이트
-            using var document = JsonDocument.Parse(jsonContent);
-            using var stream = new MemoryStream();
-            using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+                StatusMessage = $"플레이어 삭제 중: {SelectedPlayerName}";
 
-            writer.WriteStartObject();
-
-            // 기존 설정 복사 (ApiSettings, UiSettings 제외)
-            foreach (var property in document.RootElement.EnumerateObject())
-            {
-                if (property.Name != "ApiSettings" && property.Name != "UiSettings")
+                try
                 {
-                    property.WriteTo(writer);
+                    await _apiService.DeletePlayerAsync(SelectedPlayerId);
+                    await LoadPlayersAsync();
+
+                    StatusMessage = $"플레이어 삭제 완료: {SelectedPlayerName}";
+                    AddActivity($"플레이어 삭제: {SelectedPlayerName}");
+
+                    // 선택 초기화
+                    SelectedPlayerId = string.Empty;
+                    SelectedPlayerName = string.Empty;
+                    SelectedPlayerBalance = 0;
+
+                    _logger.LogInformation("플레이어 삭제 완료: {PlayerName}", SelectedPlayerName);
                 }
-            }
-
-            // ApiSettings 추가
-            writer.WritePropertyName("ApiSettings");
-            JsonSerializer.Serialize(writer, apiSettings, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-            // UiSettings 추가
-            writer.WritePropertyName("UiSettings");
-            JsonSerializer.Serialize(writer, uiSettings, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-            writer.WriteEndObject();
-            writer.Flush();
-
-            // 파일 저장
-            var updatedJson = Encoding.UTF8.GetString(stream.ToArray());
-            await File.WriteAllTextAsync(appSettingsPath, updatedJson);
-        }
-
-        /// <summary>
-        /// 런타임 설정을 즉시 적용합니다 (완전 수정된 버전)
-        /// </summary>
-        private async Task ApplyRuntimeSettingsImmediate(ApiSettings apiSettings, UiSettings uiSettings)
-        {
-            try
-            {
-                _logger.LogInformation("런타임 설정을 즉시 적용합니다...");
-
-                // 🔥 핵심: API 클라이언트 설정 업데이트 - 즉시 적용
-                if (_apiService != null)
+                catch (Exception ex)
                 {
-                    StatusMessage = "API 서비스 설정을 업데이트하는 중...";
+                    StatusMessage = $"플레이어 삭제 실패: {ex.Message}";
+                    AddActivity($"플레이어 삭제 오류: {ex.Message}");
 
-                    // 실제 ApiService 업데이트 호출
-                    await _apiService.UpdateSettingsAsync(apiSettings);
-                    _logger.LogInformation("ApiService 설정이 업데이트되었습니다.");
-
-                    // 연결 상태 표시 업데이트 (ApiService에서 자동 처리되지만 수동 동기화)
-                    IsConnected = _apiService.IsConnected;
-
-                    // 현재 설정 값들도 업데이트 (ApiService에서 변경된 값으로 동기화)
-                    var currentSettings = _apiService.GetCurrentSettings();
-                    ApiBaseUrl = currentSettings.BaseUrl;
-                    ApiKey = currentSettings.ApiKey;
-                    TimeoutSeconds = currentSettings.TimeoutSeconds;
-
-                    StatusMessage = IsConnected ?
-                        "API 설정이 적용되고 연결되었습니다." :
-                        "API 설정이 적용되었지만 서버에 연결할 수 없습니다.";
-
-                    RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] API 설정 적용: {apiSettings.BaseUrl}");
+                    _logger.LogError(ex, "플레이어 삭제 실패: {PlayerId}", SelectedPlayerId);
                 }
-
-                // UI 설정 적용
-                await ApplyUiSettingsImmediate(uiSettings);
-
-                _logger.LogInformation("모든 런타임 설정이 적용되었습니다.");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "런타임 설정 적용 중 일부 오류가 발생했습니다.");
-                StatusMessage = "설정이 저장되었지만 일부 변경사항은 재시작 후 적용됩니다.";
-                RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 설정 적용 부분 실패: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// UI 설정을 즉시 적용합니다.
-        /// </summary>
-        private async Task ApplyUiSettingsImmediate(UiSettings uiSettings)
-        {
-            try
-            {
-                // 자동 새로고침 설정 적용
-                if (_statusTimer != null)
-                {
-                    if (uiSettings.AutoRefresh != IsAutoRefreshEnabled)
-                    {
-                        IsAutoRefreshEnabled = uiSettings.AutoRefresh;
-                        // 필요시 타이머 간격 조정 로직 추가
-                        _logger.LogInformation("자동 새로고침 설정 변경: {AutoRefresh}", IsAutoRefreshEnabled);
-                    }
-                }
-
-                // 알림 설정 적용
-                ShowNotifications = uiSettings.ShowNotifications;
-                ShowAdvancedFeatures = uiSettings.ShowAdvancedFeatures;
-
-                _logger.LogInformation("UI 설정이 적용되었습니다.");
-                await Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "UI 설정 적용 중 오류 발생");
-            }
-        }
-
-        /// <summary>
-        /// 설정 유효성 검증
-        /// </summary>
-        private bool ValidateSettings()
-        {
-            // API URL 검증
-            if (string.IsNullOrWhiteSpace(ApiBaseUrl))
-            {
-                StatusMessage = "API URL을 입력해주세요.";
-                return false;
-            }
-
-            if (!Uri.TryCreate(ApiBaseUrl, UriKind.Absolute, out var uri))
-            {
-                StatusMessage = "올바른 API URL 형식이 아닙니다.";
-                return false;
-            }
-
-            if (uri.Scheme != "http" && uri.Scheme != "https")
-            {
-                StatusMessage = "API URL은 http 또는 https로 시작해야 합니다.";
-                return false;
-            }
-
-            // 타임아웃 검증
-            if (TimeoutSeconds < 5 || TimeoutSeconds > 300)
-            {
-                StatusMessage = "타임아웃은 5초에서 300초 사이여야 합니다.";
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// 설정 디렉토리 생성
-        /// </summary>
-        private async Task CreateSettingsDirectory()
-        {
-            try
-            {
-                var settingsDir = Path.GetDirectoryName(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json"));
-                if (!string.IsNullOrEmpty(settingsDir))
-                {
-                    Directory.CreateDirectory(settingsDir);
-                }
-
-                StatusMessage = "설정 디렉토리를 생성했습니다.";
-                _logger.LogInformation("설정 디렉토리를 생성했습니다: {Directory}", settingsDir);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "설정 디렉토리 생성 실패");
-                throw;
-            }
-        }
-
-        private async Task RefreshDashboardData()
-        {
-            if (!IsConnected) return;
-
-            try
-            {
-                // 실제 API 호출로 대시보드 데이터 업데이트
-                var dashboard = await _apiService.GetMarketDashboardAsync();
-                if (dashboard != null)
-                {
-                    OnlinePlayersCount = dashboard.TotalOnlinePlayers;
-                    ActiveItemsCount = dashboard.ActiveItems;
-                    TotalTradeVolume = dashboard.TotalVolume24h;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "대시보드 데이터 새로고침 실패");
-
-                // 테스트 데이터로 폴백
-                var random = new Random();
-                OnlinePlayersCount = random.Next(1, 20);
-                ActiveItemsCount = random.Next(15, 50);
-                TotalTradeVolume = (decimal)(random.NextDouble() * 50000);
-            }
+            });
         }
 
         private async Task LoadPlayersAsync()
         {
             try
             {
-                var players = await _apiService.GetOnlinePlayersAsync();
-                Players.Clear();
-                foreach (var player in players)
+                var players = await _apiService.GetAllPlayersAsync();
+
+                AllPlayers.Clear();
+                foreach (var player in players.OrderBy(p => p.PlayerName))
                 {
-                    Players.Add(player);
+                    AllPlayers.Add(player);
                 }
+
+                OnlinePlayersCount = AllPlayers.Count;
+                AddActivity($"플레이어 정보 로드: {AllPlayers.Count}명");
+
+                _logger.LogDebug("플레이어 로드 완료: {Count}명", AllPlayers.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "플레이어 목록 로드 실패");
+                AddActivity($"플레이어 로드 오류: {ex.Message}");
+                _logger.LogError(ex, "플레이어 로드 실패");
             }
         }
 
-        private async Task LoadPlayerTransactionsAsync(string playerId)
+        private void ClearActivities()
+        {
+            Execute(() =>
+            {
+                RecentActivities.Clear();
+                AddActivity("활동 로그 초기화됨");
+                StatusMessage = "활동 로그가 초기화되었습니다.";
+            });
+        }
+
+        private async Task ExportLogsAsync()
+        {
+            await ExecuteAsync(async () =>
+            {
+                try
+                {
+                    var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                    var fileName = $"HarvestCraft2_Logs_{timestamp}.json";
+                    var filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), fileName);
+
+                    var logData = new
+                    {
+                        ExportTime = DateTime.Now,
+                        SystemStatus = new
+                        {
+                            IsConnected,
+                            ConnectionStatusText,
+                            ApiEndpoint,
+                            ApiVersion,
+                            ResponseTime = ResponseTime.TotalMilliseconds,
+                            SystemStatus,
+                            OnlinePlayersCount,
+                            TotalItemsCount,
+                            TotalTransactionVolume,
+                            LastDataUpdate
+                        },
+                        RecentActivities = RecentActivities.ToList(),
+                        Players = AllPlayers.ToList(),
+                        SystemMetrics = SystemMetrics.ToList()
+                    };
+
+                    var json = JsonSerializer.Serialize(logData, new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    });
+
+                    await File.WriteAllTextAsync(filePath, json, Encoding.UTF8);
+
+                    StatusMessage = $"로그 내보내기 완료: {fileName}";
+                    AddActivity($"로그 내보내기: {fileName}");
+
+                    _logger.LogInformation("로그 내보내기 완료: {FilePath}", filePath);
+                }
+                catch (Exception ex)
+                {
+                    StatusMessage = $"로그 내보내기 실패: {ex.Message}";
+                    AddActivity($"로그 내보내기 오류: {ex.Message}");
+
+                    _logger.LogError(ex, "로그 내보내기 실패");
+                }
+            });
+        }
+
+        #endregion
+
+        #region 헬퍼 메서드들
+
+        private async Task UpdateSystemStatusAsync()
         {
             try
             {
-                var transactions = await _apiService.GetPlayerTransactionsAsync(playerId, page: 1, size: 20);
+                if (!IsConnected) return;
 
-                PlayerTransactions.Clear();
-                foreach (var transaction in transactions.OrderByDescending(t => t.TransactionTime))
+                // 시스템 메트릭 업데이트
+                var dashboardData = await _apiService.GetDashboardDataAsync();
+                if (dashboardData != null)
                 {
-                    PlayerTransactions.Add(transaction);
+                    OnlinePlayersCount = dashboardData.OnlinePlayersCount;
+                    TotalItemsCount = dashboardData.TotalItemsCount;
+                    TotalTransactionVolume = dashboardData.TotalTransactionVolume;
+                    LastDataUpdate = DateTime.Now;
+
+                    SystemStatus = "시스템 정상";
                 }
+
+                _logger.LogDebug("시스템 상태 업데이트 완료");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "플레이어 거래 내역 로드 실패: {PlayerId}", playerId);
+                SystemStatus = "상태 업데이트 실패";
+                _logger.LogError(ex, "시스템 상태 업데이트 실패");
             }
         }
 
-        private void OnTabChanged()
+        private void AddActivity(string message)
         {
-            _logger.LogDebug("탭이 변경되었습니다: {SelectedTabIndex}", SelectedTabIndex);
-            StatusMessage = $"탭 {SelectedTabIndex + 1}이 선택되었습니다.";
-        }
+            var activity = $"{DateTime.Now:HH:mm:ss} - {message}";
 
-        protected void OnIsBusyChanged()
-        {
-            OnPropertyChanged(nameof(CanRemovePlayer));
-            OnPropertyChanged(nameof(CanExecuteTransaction));
+            App.Current?.Dispatcher?.Invoke(() =>
+            {
+                RecentActivities.Insert(0, activity);
+
+                // 최대 50개 활동만 유지
+                while (RecentActivities.Count > 50)
+                {
+                    RecentActivities.RemoveAt(RecentActivities.Count - 1);
+                }
+            });
         }
 
         #endregion
 
-        #region 이벤트 핸들러
+        #region 이벤트 핸들러들
 
-        /// <summary>
-        /// ApiService 연결 상태 변경 이벤트 핸들러
-        /// </summary>
-        private void OnApiServiceConnectionChanged(object? sender, ConnectionStatusChangedEventArgs e)
+        private void OnConnectionStatusChanged(object? sender, ConnectionStatusChangedEventArgs e)
         {
-            // UI 스레드에서 실행
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-            {
-                IsConnected = e.IsConnected;
-                var statusText = e.IsConnected ? "연결됨" : "연결 안됨";
+            IsConnected = e.IsConnected;
+            AddActivity($"연결 상태 변경: {(e.IsConnected ? "연결됨" : "연결 해제됨")}");
 
-                if (!string.IsNullOrEmpty(e.ErrorMessage))
+            _logger.LogInformation("연결 상태 변경: {IsConnected}", e.IsConnected);
+        }
+
+        private void OnDataUpdated(object? sender, DataUpdatedEventArgs e)
+        {
+            LastDataUpdate = e.UpdateTime;
+            AddActivity($"데이터 업데이트: {e.DataType}");
+
+            _logger.LogDebug("데이터 업데이트: {DataType} at {UpdateTime}", e.DataType, e.UpdateTime);
+        }
+
+        #endregion
+
+        #region IDisposable 구현
+
+        public void Dispose()
+        {
+            try
+            {
+                // Timer 해제
+                _statusTimer?.Stop();
+                _statusTimer?.Dispose();
+
+                // PriceViewModel 해제
+                PriceViewModel?.Dispose();
+
+                // API 이벤트 구독 해제
+                if (_apiService != null)
                 {
-                    statusText += $" ({e.ErrorMessage})";
+                    _apiService.ConnectionStatusChanged -= OnConnectionStatusChanged;
+                    _apiService.DataUpdated -= OnDataUpdated;
                 }
 
-                RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] 연결 상태 변경: {statusText}");
-                _logger.LogInformation("ApiService 연결 상태 변경: {IsConnected}", e.IsConnected);
-            });
-        }
-
-        /// <summary>
-        /// ApiService 설정 업데이트 이벤트 핸들러
-        /// </summary>
-        private void OnApiServiceSettingsUpdated(object? sender, SettingsUpdatedEventArgs e)
-        {
-            // UI 스레드에서 실행
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                _logger.LogInformation("MainWindowViewModel 리소스 해제 완료");
+            }
+            catch (Exception ex)
             {
-                // UI의 설정 값들을 ApiService의 현재 값으로 동기화
-                ApiBaseUrl = e.NewSettings.BaseUrl;
-                ApiKey = e.NewSettings.ApiKey;
-                TimeoutSeconds = e.NewSettings.TimeoutSeconds;
-
-                RecentActivities.Add($"[{DateTime.Now:HH:mm:ss}] API 설정 업데이트: {e.NewSettings.BaseUrl}");
-                _logger.LogInformation("ApiService 설정이 업데이트되었습니다: {BaseUrl}", e.NewSettings.BaseUrl);
-            });
+                _logger.LogError(ex, "MainWindowViewModel Dispose 실패");
+            }
         }
 
         #endregion
 
-        #region IDisposable
+        #region 보조 클래스들
 
-        ~MainWindowViewModel()
+        /// <summary>
+        /// 시스템 메트릭 데이터
+        /// </summary>
+        public class SystemMetric
         {
-            // 이벤트 구독 해제
-            if (_apiService != null)
-            {
-                _apiService.ConnectionStatusChanged -= OnApiServiceConnectionChanged;
-                _apiService.SettingsUpdated -= OnApiServiceSettingsUpdated;
-            }
+            public string Name { get; set; } = string.Empty;
+            public string Value { get; set; } = string.Empty;
+            public string Unit { get; set; } = string.Empty;
+            public DateTime Timestamp { get; set; } = DateTime.Now;
+        }
 
-            _statusTimer?.Stop();
-            _statusTimer?.Dispose();
+        /// <summary>
+        /// 연결 상태 변경 이벤트 인수
+        /// </summary>
+        public class ConnectionStatusChangedEventArgs : EventArgs
+        {
+            public bool IsConnected { get; set; }
+            public string? Message { get; set; }
+        }
+
+        /// <summary>
+        /// 데이터 업데이트 이벤트 인수
+        /// </summary>
+        public class DataUpdatedEventArgs : EventArgs
+        {
+            public string DataType { get; set; } = string.Empty;
+            public DateTime UpdateTime { get; set; } = DateTime.Now;
         }
 
         #endregion

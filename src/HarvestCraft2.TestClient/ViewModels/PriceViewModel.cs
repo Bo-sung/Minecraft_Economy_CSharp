@@ -1,15 +1,26 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Windows.Input;
+﻿// ============================================================================
+// ViewModels/PriceViewModel.cs - 실시간 가격 모니터링 뷰모델 (최종 수정 버전)
+// ============================================================================
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Logging;
 using HarvestCraft2.TestClient.Models;
 using HarvestCraft2.TestClient.Services;
+using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace HarvestCraft2.TestClient.ViewModels
 {
-    public partial class PriceViewModel : ObservableObject
+    /// <summary>
+    /// 가격 모니터링 뷰모델 (기본 기능만)
+    /// </summary>
+    public partial class PriceViewModel : ObservableObject, INotifyPropertyChanged, IDisposable
     {
         private readonly IApiService _apiService;
         private readonly IChartService _chartService;
@@ -17,121 +28,149 @@ namespace HarvestCraft2.TestClient.ViewModels
         private readonly Timer _priceUpdateTimer;
 
         // ============================================================================
-        // Observable Properties
+        // 기본 속성들
         // ============================================================================
 
         [ObservableProperty]
-        private string selectedItemId = string.Empty;
+        private string _selectedItemId = string.Empty;
 
         [ObservableProperty]
-        private PriceResponse? selectedItemPrice;
+        private string _selectedItemName = string.Empty;
 
         [ObservableProperty]
-        private bool isLoading;
+        private decimal _currentPrice;
 
         [ObservableProperty]
-        private bool isAutoRefreshEnabled = true;
+        private decimal _previousPrice;
 
         [ObservableProperty]
-        private int autoRefreshInterval = 5; // 초
+        private decimal _priceChange;
 
         [ObservableProperty]
-        private DateTime selectedStartDate = DateTime.Now.AddDays(-7);
+        private decimal _priceChangePercent;
 
         [ObservableProperty]
-        private DateTime selectedEndDate = DateTime.Now;
+        private string _priceChangeDirection = "None";
 
         [ObservableProperty]
-        private int predictionDays = 7;
+        private decimal _highPrice;
 
         [ObservableProperty]
-        private string statusMessage = string.Empty;
+        private decimal _lowPrice;
 
         [ObservableProperty]
-        private decimal currentPrice;
+        private decimal _averagePrice;
 
         [ObservableProperty]
-        private decimal priceChange;
+        private int _totalVolume;
 
         [ObservableProperty]
-        private decimal priceChangePercent;
+        private bool _isLoading;
 
         [ObservableProperty]
-        private string priceChangeDirection = "None"; // Up, Down, None
+        private string _statusMessage = "준비됨";
 
         [ObservableProperty]
-        private string selectedItemName = string.Empty;
+        private bool _isAutoRefreshEnabled = true;
+
+        [ObservableProperty]
+        private int _autoRefreshInterval = 30;
+
+        [ObservableProperty]
+        private DateTime _selectedStartDate = DateTime.Now.AddDays(-1);
+
+        [ObservableProperty]
+        private DateTime _selectedEndDate = DateTime.Now;
+
+        [ObservableProperty]
+        private int _predictionDays = 7;
 
         // ============================================================================
-        // Collections
+        // 컬렉션들 (실제 모델명 사용)
         // ============================================================================
 
         public ObservableCollection<PriceResponse> AllPrices { get; } = new();
         public ObservableCollection<PriceHistoryResponse> PriceHistory { get; } = new();
         public ObservableCollection<PricePredictionResponse> PricePredictions { get; } = new();
         public ObservableCollection<ChartDataPoint> ChartData { get; } = new();
-
-        // 차트 관련 데이터
         public ObservableCollection<string> ChartCategories { get; } = new();
         public ObservableCollection<decimal> ChartValues { get; } = new();
+        public ObservableCollection<TimeRangeOption> TimeRangeOptions { get; } = new();
 
-        // 감시 대상 아이템 목록
-        public ObservableCollection<string> WatchedItems { get; } = new()
+        [ObservableProperty]
+        private TimeRangeOption? _selectedTimeRange;
+
+        // ============================================================================
+        // 생성자 및 초기화
+        // ============================================================================
+
+        public PriceViewModel(
+            IApiService apiService,
+            IChartService chartService,
+            ILogger<PriceViewModel> logger)
         {
-            "minecraft:wheat", "minecraft:carrot", "minecraft:potato", "minecraft:apple",
-            "pamhc2foodcore:rice", "pamhc2foodcore:corn", "pamhc2foodcore:tomato"
-        };
+            _apiService = apiService ?? throw new ArgumentNullException(nameof(apiService));
+            _chartService = chartService ?? throw new ArgumentNullException(nameof(chartService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // 사용 가능한 시간 범위
-        public ObservableCollection<TimeRangeOption> TimeRangeOptions { get; } = new()
-        {
-            new() { DisplayName = "최근 1시간", Hours = 1 },
-            new() { DisplayName = "최근 6시간", Hours = 6 },
-            new() { DisplayName = "최근 24시간", Hours = 24 },
-            new() { DisplayName = "최근 3일", Hours = 72 },
-            new() { DisplayName = "최근 7일", Hours = 168 },
-            new() { DisplayName = "최근 30일", Hours = 720 }
-        };
-
-        public PriceViewModel(IApiService apiService, IChartService chartService, ILogger<PriceViewModel> logger)
-        {
-            _apiService = apiService;
-            _chartService = chartService;
-            _logger = logger;
-
-            // 자동 새로고침 타이머 설정
+            // 자동 새로고침 타이머 초기화
             _priceUpdateTimer = new Timer(AutoRefreshCallback, null, Timeout.Infinite, Timeout.Infinite);
 
-            // 속성 변경 감지
+            // 초기화
+            InitializeViewModel();
+
+            // 이벤트 구독
             PropertyChanged += OnPropertyChanged;
 
-            // API 이벤트 구독
-            _apiService.PriceChanged += OnPriceChanged;
+            _logger.LogInformation("PriceViewModel 초기화 완료");
         }
 
-        #region Commands
+        private void InitializeViewModel()
+        {
+            // 시간 범위 옵션 설정
+            TimeRangeOptions.Clear();
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "1시간", Hours = 1 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "6시간", Hours = 6 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "24시간", Hours = 24 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "3일", Hours = 72 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "1주일", Hours = 168 });
+            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "1개월", Hours = 720 });
+
+            SelectedTimeRange = TimeRangeOptions.FirstOrDefault(t => t.Hours == 24);
+
+            // 초기 데이터 로드
+            _ = LoadAllPricesAsync();
+        }
+
+        // ============================================================================
+        // 명령어들
+        // ============================================================================
 
         [RelayCommand]
-        private async Task LoadDataAsync()
+        private async Task LoadAllPricesAsync()
         {
-            IsLoading = true;
-            StatusMessage = "가격 데이터 로딩 중...";
-
             try
             {
-                await LoadAllPricesAsync();
+                IsLoading = true;
+                StatusMessage = "가격 정보 로딩 중...";
 
-                if (!string.IsNullOrEmpty(SelectedItemId))
+                // 실제 API 시그니처에 맞게 수정
+                // GetItemPricesAsync(List<string> itemIds)이므로 빈 리스트 전달 (전체 조회)
+                var prices = await _apiService.GetItemPricesAsync(new List<string>());
+
+                AllPrices.Clear();
+                foreach (var price in prices.OrderBy(p => p.ItemName))
                 {
-                    await LoadItemDetailsAsync();
+                    AllPrices.Add(price);
                 }
 
-                StatusMessage = "가격 데이터 로드 완료";
+                StatusMessage = $"가격 정보 로드 완료: {AllPrices.Count}개 아이템";
+                _logger.LogDebug("전체 가격 로드 완료: {Count}개", AllPrices.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "가격 데이터 로드 실패");
-                StatusMessage = $"데이터 로드 실패: {ex.Message}";
+                _logger.LogError(ex, "가격 정보 로드 실패");
+                StatusMessage = $"가격 로드 실패: {ex.Message}";
             }
             finally
             {
@@ -140,12 +179,23 @@ namespace HarvestCraft2.TestClient.ViewModels
         }
 
         [RelayCommand]
-        private async Task SelectItemAsync(string itemId)
+        private async Task RefreshDataAsync()
         {
-            if (string.IsNullOrEmpty(itemId) || itemId == SelectedItemId) return;
+            try
+            {
+                await LoadAllPricesAsync();
 
-            SelectedItemId = itemId;
-            await LoadItemDetailsAsync();
+                if (!string.IsNullOrEmpty(SelectedItemId))
+                {
+                    await LoadItemDetailsAsync();
+                    await LoadPriceHistoryAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "데이터 새로고침 실패");
+                StatusMessage = $"새로고침 실패: {ex.Message}";
+            }
         }
 
         [RelayCommand]
@@ -166,14 +216,14 @@ namespace HarvestCraft2.TestClient.ViewModels
                 PriceHistory.Clear();
                 ChartData.Clear();
 
-                foreach (var record in history.OrderBy(h => h.Date)) // Timestamp → Date
+                foreach (var record in history.OrderBy(h => h.Date))
                 {
                     PriceHistory.Add(record);
                     ChartData.Add(new ChartDataPoint
                     {
-                        Timestamp = record.Date, // Date 사용
-                        BuyPrice = record.Price, // Price를 BuyPrice로 사용
-                        SellPrice = record.Price, // Price를 SellPrice로 사용 (동일값)
+                        Timestamp = record.Date,
+                        BuyPrice = record.Price,
+                        SellPrice = record.Price,
                         Volume = record.Volume
                     });
                 }
@@ -215,165 +265,44 @@ namespace HarvestCraft2.TestClient.ViewModels
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "가격 예측 실패: {ItemId}", SelectedItemId);
-                StatusMessage = $"예측 실패: {ex.Message}";
+                _logger.LogError(ex, "가격 예측 로드 실패: {ItemId}", SelectedItemId);
+                StatusMessage = $"예측 로드 실패: {ex.Message}";
             }
             finally
             {
                 IsLoading = false;
             }
-        }
-
-        [RelayCommand]
-        private async Task RefreshCurrentPriceAsync()
-        {
-            if (string.IsNullOrEmpty(SelectedItemId)) return;
-
-            try
-            {
-                var oldPrice = CurrentPrice;
-                var priceResponse = await _apiService.GetItemPriceAsync(SelectedItemId);
-
-                if (priceResponse != null)
-                {
-                    SelectedItemPrice = priceResponse;
-                    CurrentPrice = priceResponse.CurrentPrice; // BuyPrice → CurrentPrice
-
-                    // 가격 변동 계산
-                    CalculatePriceChange(oldPrice, CurrentPrice);
-
-                    StatusMessage = $"가격 업데이트: {SelectedItemId} - {CurrentPrice:C}";
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "가격 새로고침 실패: {ItemId}", SelectedItemId);
-                StatusMessage = $"가격 새로고침 실패: {ex.Message}";
-            }
-        }
-
-        [RelayCommand]
-        private void ToggleAutoRefresh()
-        {
-            IsAutoRefreshEnabled = !IsAutoRefreshEnabled;
-
-            if (IsAutoRefreshEnabled)
-            {
-                StartAutoRefresh();
-                StatusMessage = $"자동 새로고침 시작 ({AutoRefreshInterval}초 간격)";
-            }
-            else
-            {
-                StopAutoRefresh();
-                StatusMessage = "자동 새로고침 중지";
-            }
-        }
-
-        [RelayCommand]
-        private async Task SetTimeRangeAsync(TimeRangeOption timeRange)
-        {
-            SelectedEndDate = DateTime.Now;
-            SelectedStartDate = DateTime.Now.AddHours(-timeRange.Hours);
-
-            await LoadPriceHistoryAsync();
         }
 
         [RelayCommand]
         private async Task ExportDataAsync()
         {
-            if (PriceHistory.Count == 0)
-            {
-                StatusMessage = "내보낼 데이터가 없습니다.";
-                return;
-            }
-
             try
             {
-                IsLoading = true;
-                StatusMessage = "데이터 내보내기 중...";
-
-                // CSV 형태로 데이터 내보내기 (실제 구현에서는 파일 다이얼로그 사용)
-                var csvData = GenerateCsvData();
-
-                // 임시로 클립보드에 복사 (실제로는 파일 저장)
-                // Clipboard.SetText(csvData);
-
-                StatusMessage = $"데이터 내보내기 완료: {PriceHistory.Count}건";
-                _logger.LogInformation("가격 데이터 내보내기 완료: {ItemId}, {Count}건", SelectedItemId, PriceHistory.Count);
+                StatusMessage = "데이터 내보내기 기능은 향후 구현 예정입니다.";
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "데이터 내보내기 실패");
-                StatusMessage = $"내보내기 실패: {ex.Message}";
-            }
-            finally
-            {
-                IsLoading = false;
+                StatusMessage = "내보내기 실패";
             }
         }
 
-        #endregion
-
-        #region Data Loading
-
-        private async Task LoadAllPricesAsync()
-        {
-            try
-            {
-                var priceList = new List<PriceResponse>();
-
-                // 감시 대상 아이템들의 가격 조회
-                foreach (var itemId in WatchedItems)
-                {
-                    try
-                    {
-                        var price = await _apiService.GetItemPriceAsync(itemId);
-                        if (price != null)
-                        {
-                            priceList.Add(price);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "아이템 가격 로드 실패: {ItemId}", itemId);
-                    }
-                }
-
-                AllPrices.Clear();
-                foreach (var price in priceList.OrderBy(p => p.ItemName))
-                {
-                    AllPrices.Add(price);
-                }
-
-                _logger.LogDebug("전체 가격 정보 로드 완료: {Count}개", AllPrices.Count);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "전체 가격 정보 로드 실패");
-                throw;
-            }
-        }
-        private void InitializeTimeRangeOptions()
-        {
-            TimeRangeOptions.Clear();
-            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 1시간", Hours = 1 });
-            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 6시간", Hours = 6 });
-            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 24시간", Hours = 24 });
-            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 3일", Hours = 72 });
-            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 7일", Hours = 168 });
-            TimeRangeOptions.Add(new TimeRangeOption { DisplayName = "최근 30일", Hours = 720 });
-        }
+        // ============================================================================
+        // 헬퍼 메서드들
+        // ============================================================================
 
         private async Task LoadItemDetailsAsync()
         {
+            if (string.IsNullOrEmpty(SelectedItemId)) return;
+
             try
             {
                 var priceResponse = await _apiService.GetItemPriceAsync(SelectedItemId);
-
                 if (priceResponse != null)
                 {
-                    SelectedItemPrice = priceResponse;
-                    SelectedItemName = priceResponse.ItemName; // ItemDisplayName → ItemName
+                    SelectedItemName = priceResponse.ItemName;
                     CurrentPrice = priceResponse.CurrentPrice;
 
                     // 이전 가격과 비교하여 변동 계산
@@ -399,10 +328,11 @@ namespace HarvestCraft2.TestClient.ViewModels
                 foreach (var data in ChartData.TakeLast(50)) // 최근 50개 데이터포인트
                 {
                     ChartCategories.Add(data.Timestamp.ToString("MM/dd HH:mm"));
-                    ChartValues.Add(data.BuyPrice); // 이미 올바름 (PriceChartDataPoint 사용)
+                    ChartValues.Add(data.BuyPrice);
                 }
 
                 _logger.LogDebug("차트 데이터 업데이트 완료: {Count}개 포인트", ChartData.Count);
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
@@ -410,9 +340,29 @@ namespace HarvestCraft2.TestClient.ViewModels
             }
         }
 
-        #endregion
+        private async Task RefreshCurrentPriceAsync()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(SelectedItemId)) return;
 
-        #region Auto Refresh
+                var currentData = await _apiService.GetItemPriceAsync(SelectedItemId);
+                if (currentData != null)
+                {
+                    var oldPrice = CurrentPrice;
+                    CurrentPrice = currentData.CurrentPrice;
+                    CalculatePriceChange(oldPrice, CurrentPrice);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "현재 가격 새로고침 실패: {ItemId}", SelectedItemId);
+            }
+        }
+
+        // ============================================================================
+        // 자동 새로고침
+        // ============================================================================
 
         private void StartAutoRefresh()
         {
@@ -444,9 +394,9 @@ namespace HarvestCraft2.TestClient.ViewModels
             }
         }
 
-        #endregion
-
-        #region Price Analysis
+        // ============================================================================
+        // 가격 분석
+        // ============================================================================
 
         private void CalculatePriceChange(decimal oldPrice, decimal newPrice)
         {
@@ -469,22 +419,9 @@ namespace HarvestCraft2.TestClient.ViewModels
             };
         }
 
-        private string GenerateCsvData()
-        {
-            var csv = new System.Text.StringBuilder();
-            csv.AppendLine("Date,Price,Volume,DemandPressure,SupplyPressure"); // 헤더 수정
-
-            foreach (var record in PriceHistory)
-            {
-                csv.AppendLine($"{record.Date:yyyy-MM-dd HH:mm:ss},{record.Price},{record.Volume},{record.DemandPressure},{record.SupplyPressure}");
-            }
-
-            return csv.ToString();
-        }
-
-        #endregion
-
-        #region Event Handlers
+        // ============================================================================
+        // 이벤트 핸들러
+        // ============================================================================
 
         private async void OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -506,48 +443,14 @@ namespace HarvestCraft2.TestClient.ViewModels
             }
         }
 
-        private async void OnPriceChanged(object? sender, PriceChangedEventArgs e)
-        {
-            try
-            {
-                // 가격 변동 이벤트 처리
-                if (e.ItemId == SelectedItemId)
-                {
-                    var oldPrice = CurrentPrice;
-                    CurrentPrice = e.NewPrice;
-                    CalculatePriceChange(oldPrice, e.NewPrice);
-
-                    StatusMessage = $"가격 변동 감지: {e.ItemId} {e.OldPrice:C} → {e.NewPrice:C}";
-                    _logger.LogInformation("가격 변동: {ItemId} {OldPrice} → {NewPrice}", e.ItemId, e.OldPrice, e.NewPrice);
-                }
-
-                // 전체 가격 목록에서도 업데이트
-                var existingItem = AllPrices.FirstOrDefault(p => p.ItemId == e.ItemId);
-                if (existingItem != null)
-                {
-                    await LoadAllPricesAsync(); // 전체 목록 새로고침
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "가격 변동 이벤트 처리 실패");
-            }
-        }
-
-        #endregion
-
-        #region Dispose
+        // ============================================================================
+        // Dispose
+        // ============================================================================
 
         public void Dispose()
         {
             _priceUpdateTimer?.Dispose();
-            if (_apiService != null)
-            {
-                _apiService.PriceChanged -= OnPriceChanged;
-            }
         }
-
-        #endregion
 
         // ============================================================================
         // 보조 클래스들

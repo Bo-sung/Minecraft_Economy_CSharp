@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
-
 namespace HarvestCraft2.TestClient.Utils
 {
     /// <summary>
@@ -316,6 +315,199 @@ namespace HarvestCraft2.TestClient.Utils
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
+
+namespace HarvestCraft2.TestClient.Converters
+{
+    /// <summary>
+    /// Boolean을 상태 색상으로 변환
+    /// </summary>
+    public class BoolToStatusColorConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool isTrue)
+            {
+                return isTrue ? Brushes.Green : Brushes.Red;
+            }
+            return Brushes.Gray;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// Boolean을 Visibility로 변환
+    /// </summary>
+    public class BoolToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool isTrue)
+            {
+                return isTrue ? Visibility.Visible : Visibility.Collapsed;
+            }
+            return Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is Visibility visibility)
+            {
+                return visibility == Visibility.Visible;
+            }
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 가격 변동 방향을 색상으로 변환
+    /// </summary>
+    public class PriceDirectionToColorConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is string direction)
+            {
+                return direction switch
+                {
+                    "Up" => Brushes.Green,
+                    "Down" => Brushes.Red,
+                    _ => Brushes.Gray
+                };
+            }
+            return Brushes.Gray;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// 숫자를 통화 형식으로 변환
+    /// </summary>
+    public class DecimalToCurrencyConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is decimal decimalValue)
+            {
+                return decimalValue.ToString("C", culture);
+            }
+            if (value is double doubleValue)
+            {
+                return doubleValue.ToString("C", culture);
+            }
+            return "₩0";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is string stringValue && decimal.TryParse(stringValue.Replace("₩", "").Replace(",", ""), out decimal result))
+            {
+                return result;
+            }
+            return 0m;
+        }
+    }
+
+    /// <summary>
+    /// DateTime을 시간 문자열로 변환
+    /// </summary>
+    public class DateTimeToTimeStringConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is DateTime dateTime)
+            {
+                string format = parameter as string ?? "HH:mm:ss";
+                return dateTime.ToString(format);
+            }
+            return string.Empty;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// 상태 문자열을 색상으로 변환
+    /// </summary>
+    public class StatusToColorConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is string status)
+            {
+                return status.ToLower() switch
+                {
+                    "실행 중" or "connected" or "연결됨" => Brushes.Green,
+                    "중지됨" or "stopped" or "disconnected" => Brushes.Orange,
+                    "오류" or "error" or "연결 오류" => Brushes.Red,
+                    _ => Brushes.Gray
+                };
+            }
+            return Brushes.Gray;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// 로딩 상태를 투명도로 변환
+    /// </summary>
+    public class LoadingToOpacityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is bool isLoading)
+            {
+                return isLoading ? 0.5 : 1.0;
+            }
+            return 1.0;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    /// <summary>
+    /// 다중 값을 단일 값으로 변환 (예: 가격 변동률 계산)
+    /// </summary>
+    public class PriceChangeCalculatorConverter : IMultiValueConverter
+    {
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (values.Length >= 2 &&
+                values[0] is decimal currentPrice &&
+                values[1] is decimal previousPrice &&
+                previousPrice != 0)
+            {
+                var change = currentPrice - previousPrice;
+                var changePercent = (change / previousPrice) * 100;
+
+                return $"{change:+0.00;-0.00;0.00} ({changePercent:+0.00;-0.00;0.00}%)";
+            }
+            return "0.00 (0.00%)";
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
         }

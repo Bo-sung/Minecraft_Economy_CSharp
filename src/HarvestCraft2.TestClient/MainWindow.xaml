@@ -1,6 +1,9 @@
 ﻿<Window x:Class="HarvestCraft2.TestClient.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:HarvestCraft2.TestClient.Views"
+        xmlns:converters="clr-namespace:HarvestCraft2.TestClient.Converters"
+
         Title="HarvestCraft 2 Economy - 테스트 클라이언트" 
         Height="800" Width="1200"
         MinHeight="600" MinWidth="900"
@@ -109,15 +112,25 @@
                                     </Grid.ColumnDefinitions>
 
                                     <!-- 가격 차트 영역 -->
-                                    <Border Grid.Column="0" Background="#FFF5F5F5" 
-                                          BorderBrush="LightGray" BorderThickness="1" Margin="0,0,8,0">
-                                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock Text="📈" FontSize="48" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="실시간 가격 차트" FontSize="16" FontWeight="Bold" 
-                                                     HorizontalAlignment="Center" Margin="0,8,0,0"/>
-                                            <TextBlock Text="Phase 5에서 구현 예정" FontSize="12" 
-                                                     Foreground="Gray" HorizontalAlignment="Center"/>
-                                        </StackPanel>
+                                    <Border Grid.Column="0" Style="{StaticResource ChartContainer}">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- 차트 헤더 -->
+                                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                                                <TextBlock Text="실시간 가격 차트" FontSize="18" FontWeight="Bold"/>
+                                                <Button Content="전체 화면" Style="{StaticResource MaterialDesignFlatButton}"
+                                                        Click="OpenFullPriceView" Margin="16,0,0,0"/>
+                                            </StackPanel>
+
+                                            <!-- 임베디드 차트 뷰 -->
+                                            <Border Grid.Row="1" Background="White" CornerRadius="4">
+                                                <views:PriceView x:Name="EmbeddedPriceView" DataContext="{Binding PriceViewModel}" Margin="8"/>
+                                            </Border>
+                                        </Grid>
                                     </Border>
 
                                     <!-- 최근 활동 -->
